@@ -1,2 +1,2 @@
 # controller
-Standar Controller Implementation
+Standard Controller Implementation
