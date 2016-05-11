@@ -196,6 +196,17 @@ function changeStateFromNodeAndDataId(nodeId, data, cb) {
 	});
 }
 
+function removeStateFromNodeId(nodeId, cb) {
+	getDBConnection((db) => {
+		db.collection('nodeState').deleteMany(
+			{nodeId: nodeId},
+			function (err, resuls) {
+				cb(err);
+			}
+		);
+	});
+}
+
 function closeDB(){
     getDBConnection((db)=>{
         db.close();
@@ -230,7 +241,9 @@ export_functions = {
     insertNodeData: insertNodeData,
     insertNodeCommand: insertNodeCommand,
     setNodeDescription: setNodeDescription,
-    closeDB: closeDB
+    closeDB: closeDB,
+	changeStateFromNodeAndDataId: changeStateFromNodeAndDataId,
+	removeStateFromNodeId: removeStateFromNodeId
 };
 
 exports.db = export_functions;

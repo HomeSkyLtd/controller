@@ -1,7 +1,7 @@
 /*jshint esversion: 6 */
 var db = require("./database").db;
-var Rainfall = require("../../rainfall/rainfall");
-var Udp = require("../../drivers/udp/driver.js");
+var Rainfall = require("rainfall");
+var Udp = require("rainfall-udp");
 
 var nodes = [];
 const KEEP_ALIVE_TIME = 10 * 1000;//10s
@@ -11,9 +11,9 @@ function startTimer(node_id, id) {
 	if (id !== undefined)
 		clearTimeout(id);
 	return setTimeout(() => {
-        db.deactivateNode(node_id, () => { });
+        db.deactivateNode(node_id, () => {});
+		db.removeStateFromNodeId(node_id, () => {});
 		console.log("Deactivating node with id " + node_id + " due to timeout.");
-
 	}, 2 * KEEP_ALIVE_TIME);
 }
 
@@ -118,7 +118,7 @@ db.getNetworks((nets) => {
 						if (desc.dataType && desc.dataType[data.id] !== undefined) {
 							console.log("	Data with id " + data.id + " received: " + data.value);
 							db.insertNodeData(obj.id, time, data, () => {});
-							db.changeStateFromNodeAndDataId(obj.id, time, data, () => {});
+							db.changeStateFromNodeAndDataId(obj.id, data, () => {});
 						}
 						else
 							console.log("	Data with id " + data.id + " not declared");
