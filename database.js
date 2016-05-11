@@ -242,6 +242,7 @@ export_functions = {
     insertNodeCommand: insertNodeCommand,
     setNodeDescription: setNodeDescription,
     closeDB: closeDB,
+	retrieveDataFromNodeAndDataId: retrieveDataFromNodeAndDataId,
 	changeStateFromNodeAndDataId: changeStateFromNodeAndDataId,
 	removeStateFromNodeId: removeStateFromNodeId
 };

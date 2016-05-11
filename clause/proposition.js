@@ -1,6 +1,6 @@
 /*jshint esversion: 6 */
 
-var db = require("./database").db;
+var db = require("../database").db;
 
 function isNumeric(n) {
   return !isNaN(parseFloat(n)) && isFinite(n);
@@ -11,10 +11,8 @@ Proposition = function(lhs, operator, rhs){
 	var nodeId;
 	var dataId;
 
-	if (!lhs || lhs === null) {
+	if (lhs === undefined || lhs === null) {
 		throw new Error('[Proposition] Empty lhs');
-	} else if (isNumeric(lhs)) {
-		this.lhs = lhs;
 	} else if (typeof lhs === 'string') {
 		ids = lhs.split('.');
 		if (ids.length !== 2) {
@@ -27,16 +25,19 @@ Proposition = function(lhs, operator, rhs){
 		db.retrieveDataFromNodeAndDataId(nodeId, {id: dataId}, function(err, result) {
 			if (err) console.log(err);
 			else {
+				console.log(result);
 				this.lhs = result;
 			}
 		});
+	} else if (isNumeric(lhs)) {
+		this.lhs = lhs;
 	} else {
 		throw new Error ('[Proposition] lhs wrong format. Number or "id.id"');
 	}
 
     this.operator = operator;
 
-	if (!rhs || rhs === null) {
+	if (rhs === undefined || rhs === null) {
 		throw new Error('[Proposition] Empty rhs');
 	} else if (isNumeric(rhs)) {
 		this.rhs = rhs;
@@ -58,6 +59,8 @@ Proposition = function(lhs, operator, rhs){
 	} else {
 		throw new Error ('[Proposition] rhs wrong format. Number or "id.id"');
 	}
+
+	console.log(this.lhs + this.operator + this.rhs);
 };
 
 Proposition.prototype.evaluate = function(){
