@@ -1,10 +1,11 @@
 /*jshint esversion: 6 */
 var db = require("./database").db;
-var Communicator = require("../../communicator/communicator");
+var Rainfall = require("../../rainfall/rainfall");
 var Udp = require("../../drivers/udp/driver.js");
 
 var nodes = [];
 const KEEP_ALIVE_TIME = 10 * 1000;//10s
+var timers = {};
 
 function startTimer(node_id, id) {
 	if (id !== undefined)
@@ -31,7 +32,7 @@ db.getNetworks((nets) => {
 				console.log(err);
 				return;
 			}
-			var com = new Communicator.Communicator(driver);
+			var com = new Rainfall.Rainfall(driver);
 
 			function nodeInit(from) {
 				db.newNode((id) => {
@@ -41,7 +42,7 @@ db.getNetworks((nets) => {
 						'lifetime': KEEP_ALIVE_TIME,
 					}, (err)=>{
                         if(err) console.log(err);
-                        else console.log("Sent");});
+                        else console.log("iamcontroller, describeyourself, lifetime Sent");});
 				});
 			}
             console.log("Listening using params:");
@@ -65,16 +66,16 @@ db.getNetworks((nets) => {
                         });
 						console.log("Sending welcomeback and lifetime to " + JSON.stringify(from));
                         db.activateNode(obj.id, () => {});
+						timers[obj.id] = startTimer(obj.id, timers[obj.id]);
 					}
 					else
 						nodeInit(from);
 				});
 			}, 'iamback');
-
 			//Listens for descriptions
 			com.listen((obj, from) => {
 				console.log("[NEW DESCRIPTION] from " + obj.id + " (network " + net.id + ")");
-                var desc = {nodeClass: obj.nodeClass};
+				var desc = {nodeClass: obj.nodeClass};
 
                 var info = function(obj) {
                     return obj.reduce((prev, cur)=>{
@@ -84,26 +85,27 @@ db.getNetworks((nets) => {
                     }, {});
                 };
 
-                if (obj.nodeClass & Communicator.NODE_CLASSES.actuator)
+                if (obj.nodeClass & Rainfall.NODE_CLASSES.actuator)
                     desc.commandType = info(obj.commandType);
-                if (obj.nodeClass & Communicator.NODE_CLASSES.sensor)
+                if (obj.nodeClass & Rainfall.NODE_CLASSES.sensor)
                     desc.dataType = info(obj.dataType);
 
                 db.setNodeDescription(obj.id, desc, () => {});
-				var timerId = startTimer(obj.id);
-				com.listen((obj, from) => {
-					console.log("[KEEP ALIVE] from " + obj.id);
-					timerId = startTimer(obj.id, timerId);
-				}, 'keepalive');
+				timers[obj.id] = startTimer(obj.id);
+
 				db.activateNode(obj.id, () => {});
 			}, 'description');
+
+			com.listen((obj, from) => {
+				console.log("[KEEP ALIVE] from " + obj.id);
+				timers[obj.id] = startTimer(obj.id, timers[obj.id]);
+			}, 'keepalive');
 
 			//Listens for data
 			com.listen((obj, from) => {
 				var time = Date.now();
 				console.log("[NEW DATA] from " + obj.id  + " (network " + net.id + ") at " + time);
 				db.getNode(obj.id, (err, desc, activated) => {
-                    console.log(activated);
 					if (err) {
 						console.log("	Received data from unknown node");
 						return;

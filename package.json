@@ -13,8 +13,9 @@
     "should": "^8.3.0"
   },
   "dependencies": {
-    "rainfall": "*",
     "mongodb": "^2.1.18",
-    "rainfall-udp": "*"
+    "rainfall": "*",
+    "rainfall-udp": "*",
+    "rainfall-xbee-s1": "0.0.1"
   }
 }
