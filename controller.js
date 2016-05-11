@@ -116,6 +116,7 @@ db.getNetworks((nets) => {
 						if (desc.dataType && desc.dataType[data.id] !== undefined) {
 							console.log("	Data with id " + data.id + " received: " + data.value);
 							db.insertNodeData(obj.id, time, data, () => {});
+							db.changeStateFromNodeAndDataId(obj.id, time, data, () => {});
 						}
 						else
 							console.log("	Data with id " + data.id + " not declared");

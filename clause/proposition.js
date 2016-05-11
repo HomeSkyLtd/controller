@@ -8,8 +8,8 @@ function isNumeric(n) {
 
 Proposition = function(lhs, operator, rhs){
 	var ids;
-	var node_id;
-	var data_id;
+	var nodeId;
+	var dataId;
 
 	if (!lhs || lhs === null) {
 		throw new Error('[Proposition] Empty lhs');
@@ -20,8 +20,16 @@ Proposition = function(lhs, operator, rhs){
 		if (ids.length !== 2) {
 			throw new Error ('[Proposition] lhs format must be "id.id"');
 		}
-		node_id = ids[0];
-		data_id = ids[1];
+
+		nodeId = ids[0];
+		dataId = ids[1];
+
+		db.retrieveDataFromNodeAndDataId(nodeId, {id: dataId}, function(err, result) {
+			if (err) console.log(err);
+			else {
+				this.lhs = result;
+			}
+		});
 	} else {
 		throw new Error ('[Proposition] lhs wrong format. Number or "id.id"');
 	}
@@ -35,14 +43,21 @@ Proposition = function(lhs, operator, rhs){
 	} else if (typeof rhs === 'string') {
 		ids = rhs.split('.');
 		if (ids.length !== 2) {
-			throw new Error ('[Proposition] rhs format must be "id.id"');
+			throw new Error ('[Proposition] lhs format must be "id.id"');
 		}
-		node_id = ids[0];
-		data_id = ids[1];
+
+		nodeId = ids[0];
+		dataId = ids[1];
+
+		db.retrieveDataFromNodeAndDataId(nodeId, {id: dataId}, function(err, result) {
+			if (err) console.log(err);
+			else {
+				this.rhs = result;
+			}
+		});
 	} else {
 		throw new Error ('[Proposition] rhs wrong format. Number or "id.id"');
 	}
-    this.rhs = rhs;
 };
 
 Proposition.prototype.evaluate = function(){
