@@ -139,10 +139,11 @@ function insertNodeCommand(id, time, command, cb) {
 	});
 }
 
-function setNodeDescription(id, description, cb) {
+function setNodeDescription(id, description, from, netId, cb) {
     getDBConnection((db) => {
         var collection = db.collection('nodes');
-        collection.updateOne({id: id}, {$set:{description: description, activated: true}},
+        collection.updateOne({id: id},
+            {$set:{description: description, activated: true, from: from, netId: netId}},
 			null, (err, result)=>{
             if(err) cb(err);
             else if(result.result.ok !== 1){

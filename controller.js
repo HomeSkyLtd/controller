@@ -7,6 +7,8 @@ var nodes = [];
 const KEEP_ALIVE_TIME = 10 * 1000;//10s
 var timers = {};
 
+var networkInstances = {};
+
 function startTimer(node_id, id) {
 	if (id !== undefined)
 		clearTimeout(id);
@@ -33,6 +35,7 @@ db.getNetworks((nets) => {
 				return;
 			}
 			var com = new Rainfall.Rainfall(driver);
+			networkInstances[net.id] = com;
 
 			function nodeInit(from) {
 				db.newNode((id) => {
@@ -72,6 +75,7 @@ db.getNetworks((nets) => {
 						nodeInit(from);
 				});
 			}, 'iamback');
+
 			//Listens for descriptions
 			com.listen((obj, from) => {
 				console.log("[NEW DESCRIPTION] from " + obj.id + " (network " + net.id + ")");
@@ -90,7 +94,7 @@ db.getNetworks((nets) => {
                 if (obj.nodeClass & Rainfall.NODE_CLASSES.sensor)
                     desc.dataType = info(obj.dataType);
 
-                db.setNodeDescription(obj.id, desc, () => {});
+                db.setNodeDescription(obj.id, desc, from, net.id, () => {});
 				timers[obj.id] = startTimer(obj.id);
 
 				db.activateNode(obj.id, () => {});
