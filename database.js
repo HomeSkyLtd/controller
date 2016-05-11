@@ -174,6 +174,28 @@ function getAndIncrementNodeCounter(cb){
     });
 }
 
+function retrieveDataFromNodeAndDataId(nodeId, data, cb) {
+	getDBConnection((db) => {
+		var collection = db.collection('nodeState');
+		collection.findOne({nodeId: nodeId, dataId: data.id}, function(err, result) {
+			cb (err, result);
+		});
+	});
+}
+
+function changeStateFromNodeAndDataId(nodeId, data, cb) {
+	getDBConnection((db) => {
+		var collection = db.collection('nodeState');
+		collection.updateOne(
+			{nodeId: nodeId, dataId: data.id},
+			{$set: {value: data.value}},
+			{upsert: true},
+			function(err, result) {
+				cb (err, result);
+			});
+	});
+}
+
 function closeDB(){
     getDBConnection((db)=>{
         db.close();
