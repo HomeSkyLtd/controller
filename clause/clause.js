@@ -8,12 +8,12 @@ Clause = function(cnf){
     this.cnf = cnf;
 };
 
-Clause.prototype.evaluate = function(){
+Clause.prototype.evaluate = function(callback){
     var allTrue;
-    for(var andExpression of this.cnf){
+	for(var andExpression of this.cnf){
         allTrue = true;
         for(var proposition of andExpression){
-            if(!proposition.evaluate()) {
+            if(!proposition.evaluate(func)) {
                 allTrue = false;
                 break;
             }
