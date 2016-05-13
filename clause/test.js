@@ -5,6 +5,6 @@ proposition = require('./proposition.js');
 
 c = new Clause([
     [new Proposition("1.1", '>=', "2.1")],
-    [new Proposition(0, '==', 0)]
+    [new Proposition(1, '==', 1)]
 ]);
-console.log(c.evaluate());
+console.log("[CLAUSE] Evaluation: " + c.evaluate());

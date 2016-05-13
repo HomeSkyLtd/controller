@@ -178,7 +178,8 @@ function getAndIncrementNodeCounter(cb){
 function retrieveDataFromNodeAndDataId(nodeId, data, cb) {
 	getDBConnection((db) => {
 		var collection = db.collection('nodeState');
-		collection.findOne({nodeId: nodeId, dataId: data.id}, function(err, result) {
+		collection.findOne({nodeId: Number(nodeId), dataId: Number(data.id)},
+		(err, result) => {
 			cb (err, result);
 		});
 	});
