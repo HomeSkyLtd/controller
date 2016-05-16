@@ -8,19 +8,35 @@ Clause = function(cnf){
     this.cnf = cnf;
 };
 
-Clause.prototype.evaluate = function(callback){
-    var allTrue;
-	for(var andExpression of this.cnf){
-        allTrue = true;
-        for(var proposition of andExpression){
-            if(!proposition.evaluate(func)) {
-                allTrue = false;
-                break;
-            }
+Clause.prototype.evaluate = function(cb){
+    /*
+        Evaluates the propositions from propIndex..end in the AND expression represented
+        by cnf[andIndex]. Making propIndex=0 evaluates all the propositions in cnf[andIndex]
+    */
+    evaluatePropInAndStat = (andIndex, propIndex, cb) => {
+        if(this.cnf[andIndex].length <= propIndex) cb(true);
+        else {
+            this.cnf[andIndex][propIndex].evaluate((res) => {
+                if(res === false) cb(false);
+                else evaluatePropInAndStat(andIndex, propIndex + 1, cb);
+            });
         }
-        if(allTrue) return true;
-    }
-    return false;
+    };
+
+    /*
+        Evaluates the AND expressions from index..end in the OR expression represented by cnf.
+        Making index=0 evaluates all the AND expressions in cnf.
+    */
+    evaluateAndStat = (index, cb) => {
+        if(this.cnf.length <= index) cb(false);
+        else {
+            evaluatePropInAndStat(index, 0, (res) => {
+                if(res === true) cb(true);
+                else evaluateAndStat(index + 1, cb);
+            });
+        }
+    };
+    evaluateAndStat(0, cb);
 };
 
 exports.clause = Clause;

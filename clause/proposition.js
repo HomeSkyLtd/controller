@@ -47,7 +47,6 @@ Proposition.prototype.evaluate = function(callback) {
 		this.lhs = lhs;
 		this.rhs = rhs;
 
-		console.log(this.lhs + this.operator + this.rhs);
 	    switch(this.operator){
 	        case '>':
 	            callback(this.lhs > this.rhs);

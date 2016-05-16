@@ -94,7 +94,9 @@ db.getNetworks((nets) => {
                 if (obj.nodeClass & Rainfall.NODE_CLASSES.sensor)
                     desc.dataType = info(obj.dataType);
 
-                db.setNodeDescription(obj.id, desc, from, net.id, () => {});
+                db.setNodeDescription(obj.id, desc, from, net.id, (err) => {
+					if(err) console.error(err);
+				});
 				timers[obj.id] = startTimer(obj.id);
 
 				db.activateNode(obj.id, () => {});
