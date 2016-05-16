@@ -209,6 +209,15 @@ function removeStateFromNodeId(nodeId, cb) {
 	});
 }
 
+function retrieveRules(cb) {
+	getDBConnection((db) => {
+		var collection = db.collection('rules');
+		collection.find().toArray(function (err, result) {
+			cb (err, result);
+		});
+	});
+}
+
 function closeDB(){
     getDBConnection((db)=>{
         db.close();
@@ -246,7 +255,8 @@ export_functions = {
     closeDB: closeDB,
 	retrieveDataFromNodeAndDataId: retrieveDataFromNodeAndDataId,
 	changeStateFromNodeAndDataId: changeStateFromNodeAndDataId,
-	removeStateFromNodeId: removeStateFromNodeId
+	removeStateFromNodeId: removeStateFromNodeId,
+	retrieveRules: retrieveRules
 };
 
 exports.db = export_functions;
