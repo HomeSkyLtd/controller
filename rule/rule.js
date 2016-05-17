@@ -1,7 +1,7 @@
 /* jshint esversion: 6 */
 
 clause = require('../clause/clause.js');
-proposition = require('../clause/proposition.js')
+proposition = require('../clause/proposition.js');
 var db = require("../database").db;
 
 /**
@@ -47,7 +47,7 @@ Rule = function (callback) {
 				var andExps = [];
 
 				for (var prop of andExpression) {
-					andExps.push(new Proposition(prop.op1, prop.operator, prop.op2));
+					andExps.push(new Proposition(prop.lhs, prop.operator, prop.rhs));
 				}
 
 				orExps.push(andExps);
@@ -55,9 +55,10 @@ Rule = function (callback) {
 
 			this.rules.push({
 				clause: new Clause(orExps),
-				command: result.commands
+				command: result.command
 			});
 		}
+
 
 		callback();
 	});
@@ -66,16 +67,16 @@ Rule = function (callback) {
 Rule.prototype.getCommandsIfClauseIsTrue = function(callback) {
 	var commands = [];
 
-	getCommandIfClauseIsTrue = (index) => {
+	addCommandIfClauseIsTrue = (index) => {
 		if (index >= this.rules.length) {
 			callback(commands);
 		} else {
 			this.rules[index].clause.evaluate((res) => {
 				if (res) commands.push(this.rules[index].command);
-				getCommandIfClauseIsTrue(index + 1);
+				addCommandIfClauseIsTrue(index + 1);
 			});
 		}
 	};
 
-	getCommandIfClauseIsTrue(0);
+	addCommandIfClauseIsTrue(0);
 };
