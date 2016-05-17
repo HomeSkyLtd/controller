@@ -30,9 +30,9 @@ const INDEXES_COLLECTIONS = {
         {
             keys: { id: 1 },
             options: { unique: true }
-        } 
+        }
     ],
-    nodeState: [ 
+    nodeState: [
         {
             keys: { nodeId: 1, dataId: 1},
             options: { unique: true }
@@ -86,11 +86,10 @@ function nodeExists(id, cb) {
     getDBConnection((db) => {
         var collection = db.collection('nodes');
         collection.find({id: id}).toArray((err, docs) => {
-            if (err)
-                throw err;
-            if(docs.length === 1) cb(true);
-            else if (docs.length === 0) cb(false);
-            else throw new Error("More than one node with id " + id);
+            if(err) cb(err, false);
+            else if (docs.length === 0) cb(null, false);
+            else if(docs.description === undefined) cb(null, false);
+            else cb(null, true);
         });
     });
 }

@@ -21,7 +21,7 @@ function startTimer(node_id, id) {
 
 db.initDB(() => {
     const NETWORK_MAP = [Udp];
-    db.getNetworks((nets) => {
+    db.getNetworks((err, nets) => {
         // console.log(nets);
     	nets.forEach((net, key) => {
     		if (!NETWORK_MAP[net.type]) {
@@ -38,7 +38,7 @@ db.initDB(() => {
     			networkInstances[net.id] = com;
 
     			function nodeInit(from) {
-    				db.newNode((id) => {
+    				db.newNode((err, id) => {
     					com.send(from, {
     						packageType: 'iamcontroller | describeyourself | lifetime',
     						'yourId': id,
@@ -59,7 +59,7 @@ db.initDB(() => {
     			//Listens for reconnections
     			com.listen((obj, from) => {
     				console.log("[RECONNECTION] from " + obj.id + " (network " + net.id + ")");
-    				db.nodeExists(obj.id, (exists) => {
+    				db.nodeExists(obj.id, (err, exists) => {
     					if (exists) {
     						com.send(from, {
     							packageType: 'welcomeback | lifetime',
