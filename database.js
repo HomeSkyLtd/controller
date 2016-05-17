@@ -10,14 +10,11 @@ var getDBConnection = function(){
     return function(cb){
         if(!connection){
             MongoClient.connect(url, function(err, db) {
-                if(err) {
-                    throw err;
-                }
                 connection = db;
-                cb(connection);
+                cb(err, connection);
             });
         }
-        else cb(connection);
+        else cb(err, connection);
     };
 }();
 
@@ -53,7 +50,9 @@ function createIndexes(cb) {
             createIndex(db, indexes, cb);
         });
     }
-    getDBConnection((db) => {
+    getDBConnection((err, db) => {
+		if (err) throw err;
+
         var indexes = Object.keys(INDEXES_COLLECTIONS).reduce((previous, value) => {
             return previous.concat(INDEXES_COLLECTIONS[value].map((val) => {
                 val.collection = value;
@@ -68,14 +67,11 @@ function getNetworks(cb) {
     getDBConnection((db) => {
         var collection = db.collection('networks');
         collection.find().toArray((err, docs) => {
-            if(err){
-                throw err;
-            }
             for(var item of docs){
                 item.id = String(item._id);
                 delete item._id;
             }
-            cb(docs);
+            cb(err, docs);
         });
     });
 }
@@ -98,12 +94,8 @@ function getNode(id, cb) {
     getDBConnection((db) => {
         var collection = db.collection('nodes');
         collection.findOne({id: id}, (err, docs) => {
-            if(err){
-                console.log(err);
-                db.close();
-                return;
-            }
-            if(docs === null) cb(new Error("Requested node id " + id + " not found"), null);
+			if (err) cb(err);
+            else if(docs === null) cb(new Error("Requested node id " + id + " not found"), null);
 			else if (docs.description === undefined) cb(new Error("Requested node id " + id +
 				" has no description"));
             else cb(null, docs.description, docs.activated);
@@ -116,10 +108,7 @@ function newNode(cb) {
         var collection = db.collection('nodes');
         getAndIncrementNodeCounter((id) => {
             collection.insertOne({id: id}, function(err, r){
-                if(err){
-                    throw err;
-                }
-                cb(id);
+                cb(err, id);
             });
         });
     });
@@ -202,18 +191,18 @@ function getAndIncrementNodeCounter(cb){
     getDBConnection((db) => {
         var collection = db.collection('nodeCount');
         collection.findOne({}, (err, doc)=>{
-            if(err) throw err;
+            if(err) cb(err);
             else if(doc === null){
                 collection.insertOne({count: 1}, (err, r)=>{
-                    if(err) throw err;
+                    if(err) cb(err);
                     else if (r.result.ok != 1)
-                        throw new Error("Error creating node count");
-                    else cb(0);
+                        cb(new Error("Error creating node count"));
+                    else cb(null, 0);
                 });
             }
             else{
                 collection.updateOne({count: doc.count}, {$set:{count: doc.count+1}});
-                cb(doc.count);
+                cb(null, doc.count);
             }
         });
     });
@@ -236,8 +225,8 @@ function changeStateFromNodeAndDataId(nodeId, data, cb) {
 			{nodeId: nodeId, dataId: data.id},
 			{$set: {value: data.value}},
 			{upsert: true},
-			function(err, result) {
-				cb (err, result);
+			function(err, doc) {
+				cb (err);
 			});
 	});
 }
