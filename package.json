@@ -1,12 +1,36 @@
 {
-  "name": "controller",
-  "version": "1.0.0",
-  "description": "",
+  "name": "rainfall-controller",
+  "version": "0.0.2",
+  "description": "Controller connects the leaves of the rainfall protocol, executes handshake and acts as gateway between network and cloud.",
   "main": "controller.js",
   "scripts": {
-    "test": "mocha"
+    "test": "mocha rule"
   },
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HomeSkyLtd/controller"
+  },
+  "contributors": [
+    {
+      "name": "Ricardo Boccoli Gallego",
+      "email": "ricardo.gallego93@gmail.com"
+    },
+    {
+      "name": "Henrique Rodrigues",
+      "email": "henriqrodrigues@gmail.com"
+    },
+    {
+      "name": "Fabio Tsuyoshi Muramatsu",
+      "email": "ftmtsuyoshi@gmail.com"
+    }
+  ],
+  "keywords": [
+    "controller",
+    "homesky",
+	"automation",
+	"home"
+  ],
+  "author": "HomeSkyLtd",
   "license": "ISC",
   "devDependencies": {
     "mocha": "^2.4.5",
@@ -14,8 +38,8 @@
   },
   "dependencies": {
     "mongodb": "^2.1.18",
-    "rainfall": "*",
-    "rainfall-udp": "*",
+    "rainfall": "0.0.5",
+    "rainfall-udp": "0.0.2",
     "rainfall-xbee-s1": "0.0.1"
   }
 }

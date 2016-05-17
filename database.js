@@ -263,6 +263,18 @@ function retrieveRules(cb) {
 	});
 }
 
+function insertRule(command, clause, cb) {
+	getDBConnection((db) => {
+		db.collection('rules').insertOne({
+			command: command,
+			clause: clause
+		}, function(err, result) {
+			if (err) cb(err);
+			else cb();
+		});
+	});
+}
+
 function closeDB(){
     getDBConnection((db)=>{
         db.close();
@@ -302,6 +314,7 @@ export_functions = {
 	changeStateFromNodeAndDataId: changeStateFromNodeAndDataId,
 	removeStateFromNodeId: removeStateFromNodeId,
 	retrieveRules: retrieveRules,
+	insertRule: insertRule,
     initDB: initDB
 };
 
