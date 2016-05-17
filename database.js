@@ -192,8 +192,8 @@ function changeStateFromNodeAndDataId(nodeId, data, cb) {
 			{nodeId: nodeId, dataId: data.id},
 			{$set: {value: data.value}},
 			{upsert: true},
-			function(err, result) {
-				cb (err, result);
+			function(err, doc) {
+				cb (err);
 			});
 	});
 }

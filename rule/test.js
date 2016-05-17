@@ -8,7 +8,12 @@ describe('insert-node', function() {
 
 	it('Insert data in nodeState should work without errors', function (done) {
 
-		db.changeStateFromNodeAndDataId(1, {id: 1, value: 30}, () => {
+		db.changeStateFromNodeAndDataId(1, {id: 1, value: 30}, (err) => {
+
+			if (err) {
+				console.log(err);
+				done("Error. Is mongodb.service running?");
+			}
 
 			describe('rule', function() {
 
