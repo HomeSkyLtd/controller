@@ -11,8 +11,7 @@ describe('insert-node', function() {
 		db.changeStateFromNodeAndDataId(1, {id: 1, value: 30}, (err) => {
 
 			if (err) {
-				console.log(err);
-				done("Error. Is mongodb.service running?");
+				done(new Error("Error. Is mongodb.service running?"));
 			}
 
 			describe('rule', function() {
