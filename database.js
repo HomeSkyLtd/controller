@@ -6,7 +6,7 @@ var MongoClient = require('mongodb').MongoClient;
 const url = 'mongodb://localhost:27017/controller';
 
 var getDBConnection = function(){
-    var connection;
+    var connection = null;
     return function(cb){
         if(!connection){
             MongoClient.connect(url, function(err, db) {
@@ -21,10 +21,53 @@ var getDBConnection = function(){
     };
 }();
 
+function initDB(cb) {
+    createIndexes(cb);
+}
+
+const INDEXES_COLLECTIONS = {
+    nodes: [
+        {
+            keys: { id: 1 },
+            options: { unique: true }
+        } 
+    ],
+    nodeState: [ 
+        {
+            keys: { nodeId: 1, dataId: 1},
+            options: { unique: true }
+        }
+    ]
+};
+
+function createIndexes(cb) {
+    function createIndex(db, indexes, cb) {
+        if (indexes.length === 0) {
+            if (cb) cb();
+            return;
+        }
+        var index = indexes.pop();
+        db.collection(index.collection).createIndex(index.keys, index.options, (err, result) => {
+            if (err)
+                throw err;
+            createIndex(db, indexes, cb);
+        });
+    }
+    getDBConnection((db) => {
+        var indexes = Object.keys(INDEXES_COLLECTIONS).reduce((previous, value) => {
+            return previous.concat(INDEXES_COLLECTIONS[value].map((val) => {
+                val.collection = value;
+                return val;
+            }));
+        }, []);
+        createIndex(db, indexes, cb);
+    });
+}
+
 function getNetworks(cb) {
     getDBConnection((db) => {
         var collection = db.collection('networks');
-        collection.find().toArray((err, docs)=>{
+        collection.find().toArray((err, docs) => {
             if(err){
                 throw err;
             }
@@ -43,9 +86,11 @@ function nodeExists(id, cb) {
     getDBConnection((db) => {
         var collection = db.collection('nodes');
         collection.find({id: id}).toArray((err, docs) => {
+            if (err)
+                throw err;
             if(docs.length === 1) cb(true);
             else if (docs.length === 0) cb(false);
-            else throw new Error();
+            else throw new Error("More than one node with id " + id);
         });
     });
 }
@@ -256,7 +301,8 @@ export_functions = {
 	retrieveDataFromNodeAndDataId: retrieveDataFromNodeAndDataId,
 	changeStateFromNodeAndDataId: changeStateFromNodeAndDataId,
 	removeStateFromNodeId: removeStateFromNodeId,
-	retrieveRules: retrieveRules
+	retrieveRules: retrieveRules,
+    initDB: initDB
 };
 
 exports.db = export_functions;
