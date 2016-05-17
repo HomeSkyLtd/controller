@@ -1,6 +1,6 @@
 {
   "name": "rainfall-controller",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Controller connects the leaves of the rainfall protocol, executes handshake and acts as gateway between network and cloud.",
   "main": "controller.js",
   "scripts": {
