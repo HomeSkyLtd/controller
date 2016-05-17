@@ -1,6 +1,6 @@
 /*jshint esversion: 6 */
 
-var db = require("../database").db;
+var db = require("../../database").db;
 
 function isNumeric(n) {
   return !isNaN(parseFloat(n)) && isFinite(n);

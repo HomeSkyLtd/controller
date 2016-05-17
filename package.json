@@ -4,7 +4,7 @@
   "description": "",
   "main": "controller.js",
   "scripts": {
-    "test": "mocha"
+    "test": "mocha rule"
   },
   "author": "",
   "license": "ISC",
@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "mongodb": "^2.1.18",
-    "rainfall": "*",
-    "rainfall-udp": "*",
+    "rainfall": "0.0.5",
+    "rainfall-udp": "0.0.2",
     "rainfall-xbee-s1": "0.0.1"
   }
 }

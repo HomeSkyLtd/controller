@@ -1,7 +1,7 @@
 /* jshint esversion: 6 */
 
-clause = require('../clause/clause.js');
-proposition = require('../clause/proposition.js');
+clause = require('./clause/clause.js');
+proposition = require('./clause/proposition.js');
 var db = require("../database").db;
 
 /**
