@@ -6,7 +6,9 @@ This node controls all the sensors and actuators in the network, they only commu
 classes:
 ##### Proposition
 This is a condition like equals or greater than that checks an absolute value or a value from the database.
+
 ##### Clause
 Set of propositions in a boolean expression with OR and AND.
+
 ##### Rule
 Set of clauses that returns a command (id and value) for each clause that is true.
