@@ -10,6 +10,3 @@ This is a condition like equals or greater than that checks an absolute value or
 Set of propositions in a boolean expression with OR and AND.
 ##### Rule
 Set of clauses that returns a command (id and value) for each clause that is true.
-
-##Documentation
-For documentation on how to use the API, refer to [this](https://github.com/HomeSkyLtd/controller/blob/master/documentation.MD)
