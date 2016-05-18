@@ -14,7 +14,7 @@ var getDBConnection = function(){
                 cb(err, connection);
             });
         }
-        else cb(err, connection);
+        else cb(null, connection);
     };
 }();
 
@@ -45,13 +45,12 @@ function createIndexes(cb) {
         }
         var index = indexes.pop();
         db.collection(index.collection).createIndex(index.keys, index.options, (err, result) => {
-            if (err)
-                throw err;
-            createIndex(db, indexes, cb);
+            if (err) cb(err);
+			else createIndex(db, indexes, cb);
         });
     }
     getDBConnection((err, db) => {
-		if (err) throw err;
+		if (err) cb(err);
 
         var indexes = Object.keys(INDEXES_COLLECTIONS).reduce((previous, value) => {
             return previous.concat(INDEXES_COLLECTIONS[value].map((val) => {
@@ -64,7 +63,9 @@ function createIndexes(cb) {
 }
 
 function getNetworks(cb) {
-    getDBConnection((db) => {
+    getDBConnection((err, db) => {
+		if (err) cb(err);
+
         var collection = db.collection('networks');
         collection.find().toArray((err, docs) => {
             for(var item of docs){
@@ -79,25 +80,24 @@ function getNetworks(cb) {
 /* NODE FUNCTIONS */
 
 function nodeExists(id, cb) {
-    getDBConnection((db) => {
+    getDBConnection((err, db) => {
+		if (err) cb(err);
+
         var collection = db.collection('nodes');
         collection.find({id: id}).toArray((err, docs) => {
-<<<<<<< HEAD
-            if(docs.length === 1) cb(err, true);
-            else if (docs.length === 0) cb(err, false);
-            else cb(new Error("More than one node with id " + id));
-=======
+
             if(err) cb(err, false);
             else if (docs.length === 0) cb(null, false);
             else if(docs.description === undefined) cb(null, false);
             else cb(null, true);
->>>>>>> 8e17e5fe9988ad46ff49eff7c174bf00c978a480
         });
     });
 }
 
 function getNode(id, cb) {
-    getDBConnection((db) => {
+    getDBConnection((err, db) => {
+		if (err) cb(err);
+
         var collection = db.collection('nodes');
         collection.findOne({id: id}, (err, docs) => {
 			if (err) cb(err);
@@ -110,7 +110,9 @@ function getNode(id, cb) {
 }
 
 function newNode(cb) {
-    getDBConnection((db) => {
+    getDBConnection((err, db) => {
+		if (err) cb(err);
+
         var collection = db.collection('nodes');
         getAndIncrementNodeCounter((id) => {
             collection.insertOne({id: id}, function(err, r){
@@ -121,7 +123,9 @@ function newNode(cb) {
 }
 
 function deactivateNode(id, cb) {
-    getDBConnection((db) => {
+    getDBConnection((err, db) => {
+		if (err) cb(err);
+
 		var collection = db.collection('nodes');
 		collection.updateOne({id: id}, {$set:{activated: false}},
 			null, (err, result)=>{
@@ -135,7 +139,9 @@ function deactivateNode(id, cb) {
 }
 
 function activateNode(id, cb) {
-    getDBConnection((db) => {
+    getDBConnection((err, db) => {
+		if (err) cb(err);
+
 		var collection = db.collection('nodes');
 		collection.updateOne({id: id}, {$set:{activated: true}},
 			null, (err, result)=>{
@@ -153,6 +159,8 @@ function activateNode(id, cb) {
 
 function insertNodeData(id, time, data, cb) {
     getDBConnection((db) => {
+		if (err) cb(err);
+
 		var collection = db.collection('nodeData');
 		collection.insertOne({id: id, time: time, data: data}, function(err, r){
 			if(err){
@@ -168,6 +176,8 @@ function insertNodeData(id, time, data, cb) {
 /* Human commands */
 function insertNodeCommand(id, time, command, cb) {
     getDBConnection((err, db) => {
+		if (err) cb(err);
+
 		var collection = db.collection('nodeCommands');
 		collection.insertOne({id: id, time: time, command: command}, function(err, r){
 			if(err){
@@ -179,7 +189,9 @@ function insertNodeCommand(id, time, command, cb) {
 }
 
 function setNodeDescription(id, description, from, netId, cb) {
-    getDBConnection((db) => {
+    getDBConnection((err, db) => {
+		if (err) cb(err);
+
         var collection = db.collection('nodes');
         collection.updateOne({id: id},
             {$set:{description: description, activated: true, from: from, netId: netId}},
@@ -194,7 +206,9 @@ function setNodeDescription(id, description, from, netId, cb) {
 }
 
 function getAndIncrementNodeCounter(cb){
-    getDBConnection((db) => {
+    getDBConnection((err, db) => {
+		if (err) cb(err);
+
         var collection = db.collection('nodeCount');
         collection.findOne({}, (err, doc)=>{
             if(err) cb(err);
@@ -215,7 +229,9 @@ function getAndIncrementNodeCounter(cb){
 }
 
 function retrieveDataFromNodeAndDataId(nodeId, data, cb) {
-	getDBConnection((db) => {
+	getDBConnection((err, db) => {
+		if (err) cb(err);
+
 		var collection = db.collection('nodeState');
 		collection.findOne({nodeId: Number(nodeId), dataId: Number(data.id)},
 		(err, result) => {
@@ -225,7 +241,9 @@ function retrieveDataFromNodeAndDataId(nodeId, data, cb) {
 }
 
 function changeStateFromNodeAndDataId(nodeId, data, cb) {
-	getDBConnection((db) => {
+	getDBConnection((err, db) => {
+		if (err) cb(err);
+
 		db.collection('nodeState').updateOne(
 			{nodeId: nodeId, dataId: data.id},
 			{$set: {value: data.value}},
@@ -237,7 +255,9 @@ function changeStateFromNodeAndDataId(nodeId, data, cb) {
 }
 
 function removeStateFromNodeId(nodeId, cb) {
-	getDBConnection((db) => {
+	getDBConnection((err, db) => {
+		if (err) cb(err);
+
 		db.collection('nodeState').deleteMany(
 			{nodeId: nodeId},
 			function (err, resuls) {
@@ -248,7 +268,9 @@ function removeStateFromNodeId(nodeId, cb) {
 }
 
 function retrieveRules(cb) {
-	getDBConnection((db) => {
+	getDBConnection((err, db) => {
+		if (err) cb(err);
+
 		var collection = db.collection('rules');
 		collection.find().toArray(function (err, result) {
 			cb (err, result);
@@ -257,7 +279,9 @@ function retrieveRules(cb) {
 }
 
 function insertRule(command, clause, cb) {
-	getDBConnection((db) => {
+	getDBConnection((err, db) => {
+		if (err) cb(err);
+
 		db.collection('rules').insertOne({
 			command: command,
 			clause: clause
@@ -269,7 +293,7 @@ function insertRule(command, clause, cb) {
 }
 
 function closeDB(){
-    getDBConnection((db)=>{
+    getDBConnection((err, db)=>{
         db.close();
     });
 }
