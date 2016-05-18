@@ -82,9 +82,16 @@ function nodeExists(id, cb) {
     getDBConnection((db) => {
         var collection = db.collection('nodes');
         collection.find({id: id}).toArray((err, docs) => {
+<<<<<<< HEAD
             if(docs.length === 1) cb(err, true);
             else if (docs.length === 0) cb(err, false);
             else cb(new Error("More than one node with id " + id));
+=======
+            if(err) cb(err, false);
+            else if (docs.length === 0) cb(null, false);
+            else if(docs.description === undefined) cb(null, false);
+            else cb(null, true);
+>>>>>>> 8e17e5fe9988ad46ff49eff7c174bf00c978a480
         });
     });
 }
