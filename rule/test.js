@@ -11,7 +11,7 @@ describe('insert-node', function() {
 		db.changeStateFromNodeAndDataId(1, {id: 1, value: 30}, (err) => {
 
 			if (err) {
-				done("Connection refused with MongoDB. Is mongodb.service running?");
+				done(new Error("Connection refused with MongoDB. Is mongodb.service running?"));
 			} else {
 
 				describe('rule', function() {
