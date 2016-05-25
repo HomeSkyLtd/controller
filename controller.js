@@ -38,7 +38,6 @@ db.initDB(() => {
 					}
 					var rainfall = new Rainfall.Rainfall(driver);
 					networkInstances[net.id] = rainfall;
-					console.log(networkInstances);
 
 					function nodeInit(from) {
 						db.newNode((err, id) => {
@@ -114,12 +113,18 @@ db.initDB(() => {
 							rule.getCommandsIfClauseIsTrue((commands) => {
 								commands.forEach((cmd) => {
 									db.getNode(cmd.nodeId, (err, desc, activated) => {
-										console.log(JSON.stringify(desc));
+										if (err) {
+											throw err;
+										}
+
 										networkInstances[desc.netId].send(
 											desc.from,
 											{
 												packageType: 'command',
-												command: cmd
+												command: [{
+													id: cmd.commandId,
+													value: cmd.value
+												}]
 											},
 											() => {
 												console.log("[COMMAND] Command " + cmd.value + " sent to node " + cmd.nodeId);

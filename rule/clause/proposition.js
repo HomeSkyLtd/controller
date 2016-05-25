@@ -44,27 +44,24 @@ Proposition = function(lhs, operator, rhs, cb){
 Proposition.prototype.evaluate = function(callback) {
 	saveValue(this.lhs, (lhs) => {
 		saveValue(this.rhs, (rhs) => {
-		this.lhs = lhs;
-		this.rhs = rhs;
-
 	    switch(this.operator){
 	        case '>':
-	            callback(this.lhs > this.rhs);
+	            callback(lhs > rhs);
 				break;
 	        case '<':
-	            callback(this.lhs < this.rhs);
+	            callback(lhs < rhs);
 				break;
 	        case '>=':
-	            callback(this.lhs >= this.rhs);
+	            callback(lhs >= rhs);
 				break;
 	        case '<=':
-	            callback(this.lhs <= this.rhs);
+	            callback(lhs <= rhs);
 				break;
 	        case '==':
-	            callback(this.lhs == this.rhs);
+	            callback(lhs == rhs);
 				break;
 	        case '!=':
-	            callback(this.lhs != this.rhs);
+	            callback(lhs != rhs);
 				break;
 	        default:
 	            throw new Error(`Operator ${this.operator} is not defined`);
