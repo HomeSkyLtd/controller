@@ -1,8 +1,8 @@
 /* jshint esversion: 6 */
 
-clause = require('./clause/clause.js');
-proposition = require('./clause/proposition.js');
-var db = require("../database").db;
+const clause = require('./clause/clause.js');
+const proposition = require('./clause/proposition.js');
+const db = require("../database").db;
 
 /**
 	In MongoDB, data should be like this:
@@ -80,3 +80,5 @@ Rule.prototype.getCommandsIfClauseIsTrue = function(callback) {
 
 	addCommandIfClauseIsTrue(0);
 };
+
+exports.Rule = Rule;
