@@ -1,4 +1,5 @@
 /*jshint esversion: 6 */
+
 const db = require('./database').db;
 const Rainfall = require('rainfall');
 const Tcp = require('rainfall-tcp');
@@ -36,7 +37,8 @@ db.initDB(() => {
 						return;
 					}
 					var rainfall = new Rainfall.Rainfall(driver);
-					networkInstances[net.id] = com;
+					networkInstances[net.id] = rainfall;
+					console.log(networkInstances);
 
 					function nodeInit(from) {
 						db.newNode((err, id) => {
@@ -112,8 +114,9 @@ db.initDB(() => {
 							rule.getCommandsIfClauseIsTrue((commands) => {
 								commands.forEach((cmd) => {
 									db.getNode(cmd.nodeId, (err, desc, activated) => {
-										rainfall.send(
-											desc.address,
+										console.log(JSON.stringify(desc));
+										networkInstances[desc.netId].send(
+											desc.from,
 											{
 												packageType: 'command',
 												command: cmd

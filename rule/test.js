@@ -17,7 +17,7 @@ describe('insert-node', function() {
 				describe('rule', function() {
 
 					it('Rule 1 should work without errors', function(done) {
-						db.insertRule({id: 3, value: 22},
+						db.insertRule({nodeId: 3, commandId: 0, value: 22},
 							[[{lhs: 1, operator: '!=', rhs: 1}, {lhs: 1.1, operator: '<', rhs: 2.3}], [{lhs: '1.1', operator: '<=', rhs: 20}]],
 							function (err) {
 								if (err) {
@@ -26,7 +26,7 @@ describe('insert-node', function() {
 
 								r = new Rule (() => {
 									r.getCommandsIfClauseIsTrue((commands) => {
-										commands.should.be.exactly("[{id: 3, command: 22}]");
+										commands.should.be.exactly("[{nodeId: 3, commandId: 0, command: 22}]");
 									});
 								});
 							});
@@ -34,14 +34,14 @@ describe('insert-node', function() {
 					});
 
 					it('Rule 2 should work without errors', function(done) {
-						db.insertRule({id: 1, value: 20},
+						db.insertRule({nodeId: 1, commandId: 1, value: 20},
 							[[{lhs: 1, operator: '==', rhs: 1}, {lhs: 1.1, operator: '<', rhs: 2.3}], [{lhs: '1.1', operator: '>', rhs: 20}]],
 							function (err) {
 								if (err) throw err;
 
 								r = new Rule (() => {
 									r.getCommandsIfClauseIsTrue((commands) => {
-										commands.should.be.exactly("[{id: 3, command: 22}]");
+										commands.should.be.exactly("[{nodeId: 3, commandId: 0, command: 22}]");
 									});
 								});
 							});

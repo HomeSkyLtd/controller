@@ -114,7 +114,8 @@ function newNode(cb) {
 		if (err) cb(err);
 
         var collection = db.collection('nodes');
-        getAndIncrementNodeCounter((id) => {
+        getAndIncrementNodeCounter((err, id) => {
+            console.log(id);
             collection.insertOne({id: id}, function(err, r){
                 cb(err, id);
             });
@@ -158,7 +159,7 @@ function activateNode(id, cb) {
 /*  DATA AND COMMAND FUNCTIONS */
 
 function insertNodeData(id, time, data, cb) {
-    getDBConnection((db) => {
+    getDBConnection((err, db) => {
 		if (err) cb(err);
 
 		var collection = db.collection('nodeData');
@@ -211,6 +212,7 @@ function getAndIncrementNodeCounter(cb){
 
         var collection = db.collection('nodeCount');
         collection.findOne({}, (err, doc)=>{
+            console.log(doc);
             if(err) cb(err);
             else if(doc === null){
                 collection.insertOne({count: 1}, (err, r)=>{
