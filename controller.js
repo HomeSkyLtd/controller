@@ -1,7 +1,7 @@
 /*jshint esversion: 6 */
 var db = require("./database").db;
 var Rainfall = require("rainfall");
-var Udp = require("rainfall-udp");
+var Tcp = require("rainfall-tcp");
 
 var nodes = [];
 const KEEP_ALIVE_TIME = 10 * 1000;//10s
@@ -20,7 +20,7 @@ function startTimer(node_id, id) {
 }
 
 db.initDB(() => {
-    const NETWORK_MAP = [Udp];
+    const NETWORK_MAP = [Tcp];
     db.getNetworks((err, nets) => {
         // console.log(nets);
     	nets.forEach((net, key) => {
