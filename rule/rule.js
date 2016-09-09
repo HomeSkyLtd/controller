@@ -8,60 +8,76 @@ const db = require("../database").db;
 	In MongoDB, data should be like this:
  {
 	command: {
-		id: 1
+		nodeId: 1,
+        commandId: 1,
 		value: 20
 	},
-	clause: [
+	clauses: [
 	  	[
 	  		{
-	  			op1: "1.1",
+	  			lhs: "1.1",
 	  			operator: ">",
-	  			op2: 20
+	  			rhs: 20
 	  		},
 	  		{
-	  			op1: "1.1",
+	  			lhs: "1.1",
 	  			operator: "<",
-	  			op2: 40
+	  			rhs: 40
 	  		}
 	  	],
 	  	[
 	  		{
-	  			op1: "2.1",
+	  			lhs: "2.1",
 	  			operator: "==",
-	  			op2: true
+	  			rhs: true
 	  		}
 	  	]
 	  ]
   }
   */
-Rule = function (callback) {
+
+function createRulesObject(objRules) {
+    var rules = [];
+    for (var result of objRules) {
+        var orExps = [];
+
+        for (var andExpression of result.clauses) {
+            var andExps = [];
+
+            for (var prop of andExpression) {
+                andExps.push(new Proposition(prop.lhs, prop.operator, prop.rhs));
+            }
+
+            orExps.push(andExps);
+        }
+
+        rules.push({
+            clause: new Clause(orExps),
+            command: result.command
+        });
+    }
+    return rules;
+}
+var Rule = function (callback) {
 	db.retrieveRules((err, docs) => {
 		if (err) throw err;
 
-		this.rules = [];
-
-		for (var result of docs) {
-			var orExps = [];
-
-			for (var andExpression of result.clause) {
-				var andExps = [];
-
-				for (var prop of andExpression) {
-					andExps.push(new Proposition(prop.lhs, prop.operator, prop.rhs));
-				}
-
-				orExps.push(andExps);
-			}
-
-			this.rules.push({
-				clause: new Clause(orExps),
-				command: result.command
-			});
-		}
-
+		this.rules = createRulesObject(docs);
 
 		callback();
 	});
+};
+
+Rule.prototype.updateRules = function (rules, callback) {
+    this.rules = createRulesObject(rules);
+    db.updateRules(rules, callback);
+};
+
+Rule.prototype.removeRules = function (nodeId, callback) {
+    this.rules = this.rules.filter((rule) => {
+        return rule.command.nodeId != nodeId;
+    });
+    removeNodeRules(nodeId, callback);
 };
 
 Rule.prototype.getCommandsIfClauseIsTrue = function(callback) {

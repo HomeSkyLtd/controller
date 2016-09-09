@@ -26,7 +26,7 @@ describe('insert-node', function() {
 
 								r = new Rule (() => {
 									r.getCommandsIfClauseIsTrue((commands) => {
-										commands.should.be.exactly("[{nodeId: 3, commandId: 0, command: 22}]");
+										commands.should.be.exactly("[{nodeId: 3, commandId: 0, value: 22}]");
 									});
 								});
 							});
@@ -41,7 +41,7 @@ describe('insert-node', function() {
 
 								r = new Rule (() => {
 									r.getCommandsIfClauseIsTrue((commands) => {
-										commands.should.be.exactly("[{nodeId: 3, commandId: 0, command: 22}]");
+										commands.should.be.exactly("[{nodeId: 3, commandId: 0, value: 22}]");
 									});
 								});
 							});

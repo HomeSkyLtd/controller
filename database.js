@@ -5,6 +5,7 @@ var MongoClient = require('mongodb').MongoClient;
 
 const url = 'mongodb://localhost:27017/controller';
 
+
 var getDBConnection = function(){
     var connection = null;
     return function(cb){
@@ -104,7 +105,17 @@ function getNode(id, cb) {
             else if(docs === null) cb(new Error("Requested node id " + id + " not found"), null);
 			else if (docs.description === undefined) cb(new Error("Requested node id " + id +
 				" has no description"));
-            else cb(null, docs.description, docs.activated);
+            else cb(null, docs.description, docs.activated, docs.accepted);
+        });
+    });
+}
+
+function removeNode(id, cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+        db.collection('nodes').removeOne({id: id}, (err, docs) => {
+            if (err) cb(err);
+            else cb();
         });
     });
 }
@@ -155,6 +166,37 @@ function activateNode(id, cb) {
 	});
 }
 
+function sentNodeInfo(id, cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+
+        db.collection('nodes').updateOne({id: id}, {$set:{accepted: 1}},
+            null, (err, result)=>{
+            if(err) cb(err);
+            else if(result.result.ok !== 1){
+                cb(new Error("Error setting sent node " + id));
+            }
+            else cb();
+        });
+    });
+}
+
+function acceptNode(id, accept, cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+
+        var collection = db.collection('nodes');
+        collection.updateOne({id: id}, {$set:{accepted: accept ? 3 : 2}},
+            null, (err, result)=>{
+            if(err) cb(err);
+            else if(result.result.ok !== 1){
+                cb(new Error("Error accepting node " + id));
+            }
+            else cb();
+        });
+    });
+}
+
 
 /*  DATA AND COMMAND FUNCTIONS */
 
@@ -174,6 +216,23 @@ function insertNodeData(id, time, data, cb) {
 	});
 }
 
+function removeNodeData(id, dataId, time, cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+
+        var collection = db.collection('nodeData');
+        collection.deleteOne({id: id, time: time, 'data.id': dataId}, function(err, r){
+            if(err){
+                cb(err);
+            }
+            else{
+                cb();
+            }
+        });
+    });
+}
+
+
 /* Human commands */
 function insertNodeCommand(id, time, command, cb) {
     getDBConnection((err, db) => {
@@ -189,6 +248,25 @@ function insertNodeCommand(id, time, command, cb) {
 	});
 }
 
+
+function removeNodeCommand(id, commandId, time, cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+
+        var collection = db.collection('nodeCommands');
+        collection.deleteOne({id: id, time: time, 'command.id': commandId}, function(err, r){
+            if(err){
+                cb(err);
+            }
+            else{
+                cb();
+            }
+        });
+    });
+}
+
+
+
 function setNodeDescription(id, description, from, netId, cb) {
     getDBConnection((err, db) => {
 		if (err) cb(err);
@@ -198,7 +276,7 @@ function setNodeDescription(id, description, from, netId, cb) {
 
         var collection = db.collection('nodes');
         collection.updateOne({id: id},
-            {$set:{description: description, activated: true}},
+            {$set:{description: description, activated: true, accepted: 0}},
 			null, (err, result)=>{
             if(err) cb(err);
             else if(result.result.ok !== 1){
@@ -283,18 +361,41 @@ function retrieveRules(cb) {
 	});
 }
 
-function insertRule(command, clause, cb) {
+function insertRule(command, clauses, cb) {
 	getDBConnection((err, db) => {
 		if (err) cb(err);
 
 		db.collection('rules').insertOne({
 			command: command,
-			clause: clause
+			clauses: clauses
 		}, function(err, result) {
 			if (err) cb(err);
 			else cb();
 		});
 	});
+}
+
+function updateRules(rules, cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+        db.collection('rules').deleteMany({}, function (err, response) {
+            if (err) cb(err);
+            db.collection('rules').insertMany(rules, function(err, result) {
+                if (err) cb(err);
+                else cb();
+            });
+        });
+    });
+}
+
+function removeNodeRules(nodeId, cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+        db.collection('rules').deleteMany({'command.nodeId': nodeId}, function (err, response) {
+            if (err) cb(err);
+            else cb();
+        });
+    });   
 }
 
 function closeDB(){
@@ -326,10 +427,13 @@ export_functions = {
     nodeExists: nodeExists,
     getNode: getNode,
     newNode: newNode,
+    removeNode: removeNode,
     deactivateNode: deactivateNode,
     activateNode: activateNode,
     insertNodeData: insertNodeData,
+    removeNodeData: removeNodeData,
     insertNodeCommand: insertNodeCommand,
+    removeNodeCommand: removeNodeCommand,
     setNodeDescription: setNodeDescription,
     closeDB: closeDB,
 	retrieveDataFromNodeAndDataId: retrieveDataFromNodeAndDataId,
@@ -337,6 +441,10 @@ export_functions = {
 	removeStateFromNodeId: removeStateFromNodeId,
 	retrieveRules: retrieveRules,
 	insertRule: insertRule,
+    updateRules: updateRules,
+    removeNodeRules: removeNodeRules,
+    acceptNode: acceptNode,
+    sentNodeInfo: sentNodeInfo,
     initDB: initDB
 };
 
