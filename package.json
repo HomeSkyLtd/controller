@@ -27,8 +27,8 @@
   "keywords": [
     "controller",
     "homesky",
-	"automation",
-	"home"
+    "automation",
+    "home"
   ],
   "author": "HomeSkyLtd",
   "license": "ISC",
@@ -37,6 +37,7 @@
     "should": "^8.3.0"
   },
   "dependencies": {
+    "homecloud-controller": "^1.0.0",
     "mongodb": ">=2.1.18",
     "rainfall": ">=0.1.0",
     "rainfall-tcp": ">=0.1.0",
