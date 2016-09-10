@@ -1,0 +1,8 @@
+{
+    "username": "login123",
+    "password": "pass123",
+    "websocket": {
+        "address": "ws://localhost:8092/ws"
+    },
+    "address": "http://localhost:8093"
+}

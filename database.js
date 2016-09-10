@@ -38,6 +38,13 @@ const INDEXES_COLLECTIONS = {
     ]
 };
 
+const NODE_ACCEPTED = {
+    NOT_SENT: 0,
+    SENT: 1,
+    NOT_ACCEPTED: 2,
+    ACCEPTED: 3
+};
+
 function createIndexes(cb) {
     function createIndex(db, indexes, cb) {
         if (indexes.length === 0) {
@@ -232,6 +239,26 @@ function removeNodeData(id, dataId, time, cb) {
     });
 }
 
+function getAllData(cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+        db.collection('nodeData').find().toArray(function(err, docs){
+            if (err) cb(err);
+            else cb(null, docs);
+        });
+    });
+}
+
+function getAllNodeData(nodeId, cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+        db.collection('nodeData').find({id: nodeId}).toArray(function(err, docs){
+            if (err) cb(err);
+            else cb(null, docs);
+        });
+    });
+}
+
 
 /* Human commands */
 function insertNodeCommand(id, time, command, cb) {
@@ -261,6 +288,26 @@ function removeNodeCommand(id, commandId, time, cb) {
             else{
                 cb();
             }
+        });
+    });
+}
+
+function getAllCommands(cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+        db.collection('nodeCommands').find({}).toArray(function(err, docs){
+            if (err) cb(err);
+            else cb(null, docs);
+        });
+    });
+}
+
+function getAllNodeCommands(nodeId, cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+        db.collection('nodeCommands').find({id: nodeId}).toArray(function(err, docs){
+            if (err) cb(err);
+            else cb(null, docs);
         });
     });
 }
@@ -445,7 +492,13 @@ export_functions = {
     removeNodeRules: removeNodeRules,
     acceptNode: acceptNode,
     sentNodeInfo: sentNodeInfo,
+    NODE_ACCEPTED: NODE_ACCEPTED,
+    getAllData: getAllData,
+    getAllNodeData: getAllNodeData,
+    getAllCommands: getAllCommands,
+    getAllNodeCommands: getAllNodeCommands,
     initDB: initDB
 };
 
 exports.db = export_functions;
+

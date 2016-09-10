@@ -1,5 +1,5 @@
 /*jshint esversion: 6 */
-
+//TODO: SEND TO SERVER RULES ACTIONS!
 const db = require('./database').db;
 const Rainfall = require('rainfall');
 const Tcp = require('rainfall-tcp');
@@ -11,14 +11,7 @@ const KEEP_ALIVE_TIME = 10 * 1000;//10s
 var timers = {};
 var networkInstances = {};
 
-const homeCloudOptions = {
-    username: "login123",
-    password: "pass123",
-    websocket: {
-        address: "ws://localhost:8092/ws"
-    },
-    address: "http://localhost:8093"
-};
+const homeCloudOptions = require('./controller_options.json');
 var homecloud = new Homecloud(homeCloudOptions);
 
 function startTimer(node_id, id) {
@@ -39,8 +32,8 @@ db.initDB(() => {
         .onAction((message) => {
             //Try to make action
             var action = message.action;
-            db.getNode(action.nodeId, (err, desc, activated) => {
-                if (err) {
+            db.getNode(action.nodeId, (err, desc, activated, accepted) => {
+                if (err || !activated || accepted != db.NODE_ACCEPTED.ACCEPTED) {
                     homecloud.actionResult(action, false);
                     return;
                 }
@@ -53,9 +46,14 @@ db.initDB(() => {
                             value: action.value
                         }]
                     },
-                    () => {
+                    (err) => {
                         //Send result
-                        homecloud.actionResult(action, true);
+                        if (err)
+                            homecloud.actionResult(action, false);
+                        else {
+                            homecloud.actionResult(action, true);
+                            //TODO: save in node state
+                        }
                     }
                 );
             });
@@ -74,13 +72,41 @@ db.initDB(() => {
             var id = message.nodeId;
             db.getNode(id, (err, desc, activated, accepted) => {
                 if (err) console.log("[NOTIFICATION] Tried to accept non existent node");
-                else if (accepted === 3) console.log("[NOTIFICATION] Tried to accept accepted node");
-                else if (accepted === 2) console.log("[NOTIFICATION] Tried to accept rejected node");
-                else if (accepted === 0) console.log("[NOTIFICATION] Tried to accept non sent node");
+                else if (accepted === db.NODE_ACCEPTED.ACCEPTED) console.log("[NOTIFICATION] Tried to accept accepted node");
+                else if (accepted === db.NODE_ACCEPTED.NOT_ACCEPTED) console.log("[NOTIFICATION] Tried to accept rejected node");
+                else if (accepted === db.NODE_ACCEPTED.NOT_SENT) console.log("[NOTIFICATION] Tried to accept non sent node");
                 else {
                     console.log("[NOTIFICATION] Accepting node");
                     db.activateNode(id, () => {});
                     db.acceptNode(id, message.accept === 1, () => {});
+
+                    db.getAllNodeData(id, (err, allData) => {
+                         allData.forEach((data) => {
+                            homecloud.newData([{
+                                nodeId: data.id,
+                                dataId: data.data.id,
+                                value: data.data.value,
+                                timestamp: data.time
+                            }], (response) => {
+                                //Erase
+                                db.removeNodeData(data.id, data.data.id, data.time, () => {});
+                            }); 
+                        });
+                    });
+
+                    db.getAllNodeCommands(id, (err, allCommands) => {
+                         allCommands.forEach((command) => {
+                            homecloud.newCommand([{
+                                nodeId: command.id,
+                                commandId: command.command.id,
+                                value: command.command.value,
+                                timestamp: command.time
+                            }], (response) => {
+                                //Erase
+                                db.removeNodeCommand(command.id, command.command.id, command.time, () => {});
+                            }); 
+                        });
+                    });
                 }
             });
         })
@@ -91,6 +117,47 @@ db.initDB(() => {
             });
         })
         .start();
+    
+    db.getAllData((err, allData) => {
+        if (err) return;
+        allData.forEach((data) => {
+            db.getNode(data.id, (err, desc, activated, accepted) => {
+                //Sent to server
+                if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
+                    homecloud.newData([{
+                        nodeId: data.id,
+                        dataId: data.data.id,
+                        value: data.data.value,
+                        timestamp: data.time
+                    }], (response) => {
+                        //Erase
+                        db.removeNodeData(data.id, data.data.id, data.time, () => {});
+                    });
+                }
+            });
+        });
+    });
+
+    db.getAllCommands((err, allCommands) => {
+        if (err) return;
+        allCommands.forEach((command) => {
+            db.getNode(command.id, (err, desc, activated, accepted) => {
+                //Sent to server
+                if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
+                    homecloud.newCommand([{
+                        nodeId: command.id,
+                        commandId: command.command.id,
+                        value: command.command.value,
+                        timestamp: command.time
+                    }], (response) => {
+                        //Erase
+                        db.removeNodeCommand(command.id, command.command.id, command.time, () => {});
+                    });
+                }
+            });
+        });
+    });
+    
 	rule = new Rule.Rule(() => {
 		db.getNetworks((err, nets) => {
 			// console.log(nets);
@@ -230,7 +297,7 @@ db.initDB(() => {
 									console.log("	Received data from unknown node");
 									return;
 								}
-                                if (accepted === 2) {
+                                if (accepted === db.NODE_ACCEPTED.NOT_ACCEPTED) {
                                     console.log("   Received data from rejected node");
                                     return;
                                 }
@@ -243,7 +310,7 @@ db.initDB(() => {
 										console.log("	Data with id " + data.id + " received: " + data.value);
 										db.insertNodeData(obj.id, time, data, () => {});
 										db.changeStateFromNodeAndDataId(obj.id, data, () => {});
-                                        if (accepted === 3) {
+                                        if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
                                             //Sent to server
                                             homecloud.newData([{
                                                 nodeId: obj.id,
@@ -270,22 +337,22 @@ db.initDB(() => {
 							console.log("[NEW COMMAND] from " + obj.id  + " (network " + net.id + ") at " + time);
 							db.getNode(obj.id, (err, desc, activated, accepted) => {
 								if (err) {
-									console.log("   Received data from unknown node");
+									console.log("   Received external command from unknown node");
 									return;
 								}
-                                if (accepted === 2) {
-                                    console.log("   Received data from rejected node");
+                                if (accepted === db.NODE_ACCEPTED.NOT_ACCEPTED) {
+                                    console.log("   Received external command from rejected node");
                                     return;
                                 }
                                 if (!activated) {
-                                    console.log("   Received data from deactivated node");
+                                    console.log("   Received external command from deactivated node");
                                     return;
                                 }
 								obj.command.forEach((command) => {
-									if (desc.commandType && desc.commandType[data.id] !== undefined) {
+									if (desc.commandType && desc.commandType[command.id] !== undefined) {
 										console.log("	External Command with id " + command.id + " received: " + command.value);
 										db.insertNodeCommand(obj.id, time, command, () => {});
-                                        if (accepted === 2) {
+                                        if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
                                             //Sent to server
                                             homecloud.newCommand([{
                                                 nodeId: obj.id,

@@ -10,26 +10,28 @@ MongoClient.connect(url, function(err, db) {
         db.collection('nodeCount').drop(() => {
             db.collection('nodeState').drop(() => {
                 db.collection('nodes').drop(() => {
-                    var collection = db.collection('networks');
-                    collection.count((err, count)=>{
-                        if(err) console.log("Error accessing number of networks");
-                        else{
-                            if(count == 2) {
-                                console.log("Networks database already up to date");
-                                db.close();
-                            }
+                    db.collection('nodeData').drop(() => {
+                        var collection = db.collection('networks');
+                        collection.count((err, count)=>{
+                            if(err) console.log("Error accessing number of networks");
                             else{
-                                console.log("Inserting network entries...");
-                                collection.insertMany([
-                                    {params: {rport:2356, broadcast_port: 2356, udplisten: true}, type: 0}, //udp params
-                                    {params: {tty_port: "/dev/ttyUSB0"}, type: 1} //xbee 802.15.4 params
-                                ], (err, r)=>{
-                                    console.log("Done! Inserted entries: ");
-                                    console.log(r.ops);
+                                if(count == 2) {
+                                    console.log("Networks database already up to date");
                                     db.close();
-                                });
+                                }
+                                else{
+                                    console.log("Inserting network entries...");
+                                    collection.insertMany([
+                                        {params: {rport:2356, broadcast_port: 2356, udplisten: true}, type: 0}, //udp params
+                                        {params: {tty_port: "/dev/ttyUSB0"}, type: 1} //xbee 802.15.4 params
+                                    ], (err, r)=>{
+                                        console.log("Done! Inserted entries: ");
+                                        console.log(r.ops);
+                                        db.close();
+                                    });
+                                }
                             }
-                        }
+                        });
                     });
                 });
             });
