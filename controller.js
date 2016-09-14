@@ -4,7 +4,6 @@ const Rainfall = require('rainfall');
 const Tcp = require('rainfall-tcp');
 const Rule = require('./rule/rule.js');
 var Homecloud = require('homecloud-controller').Homecloud;
-
 const KEEP_ALIVE_TIME = 10 * 1000;//10s
 
 var timers = {};
@@ -187,8 +186,8 @@ db.initDB(() => {
 								if (err) console.log(err);
 								else {
                                     console.log("iamcontroller, describeyourself, lifetime Sent");
-                                    timers[id] = startTimer(id);
-                                    homecloud.setNodeState(id, true);
+                                    //timers[id] = startTimer(id);
+                                    //homecloud.setNodeState(id, true);
                                 }
                             });
 						});
@@ -255,6 +254,8 @@ db.initDB(() => {
                             //Send to server
                             homecloud.newNodes([serverDesc], (response) => {
                                 db.sentNodeInfo(obj.id, () => {});
+                                timers[obj.id] = startTimer(obj.id);
+                                homecloud.setNodeState(obj.id, true);
                             });
 						}, 'description');
 
