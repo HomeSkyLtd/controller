@@ -1,5 +1,5 @@
 #Controller options (json)
-./controller_options.json
+controller_options.json
 # Logs
 logs
 *.log
