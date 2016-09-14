@@ -1,5 +1,4 @@
 /*jshint esversion: 6 */
-//TODO: SEND TO SERVER RULES ACTIONS!
 const db = require('./database').db;
 const Rainfall = require('rainfall');
 const Tcp = require('rainfall-tcp');
@@ -30,6 +29,7 @@ db.initDB(() => {
     var rule;
     homecloud
         .onAction((message) => {
+            console.log("ON ACTION");            
             //Try to make action
             var action = message.action;
             db.getNode(action.nodeId, (err, desc, activated, accepted) => {
@@ -48,11 +48,12 @@ db.initDB(() => {
                     },
                     (err) => {
                         //Send result
-                        if (err)
+                        if (err) {
                             homecloud.actionResult(action, false);
+                            return; 
+                        }
                         else {
                             homecloud.actionResult(action, true);
-                            //TODO: save in node state
                         }
                     }
                 );
@@ -265,11 +266,16 @@ db.initDB(() => {
 						var sendCommandIfRulesAreTrue = () => {
 							rule.getCommandsIfClauseIsTrue((commands) => {
 								commands.forEach((cmd) => {
-									db.getNode(cmd.nodeId, (err, desc, activated) => {
+									db.getNode(cmd.nodeId, (err, desc, activated, accepted) => {
 										if (err) {
-											throw err;
+                                            console.log("[Warning] Tried to execute rule of unexisting node");
+											return;
 										}
-
+                                        if (accepted !== db.NODE_ACCEPTED.ACCEPTED ||
+                                            !activated) {
+                                            console.log("[Warning] Tried to execute rule of not accepted, pending or deactivated node");
+                                            return;
+                                        }
 										networkInstances[desc.netId].send(
 											desc.from,
 											{
@@ -280,6 +286,20 @@ db.initDB(() => {
 												}]
 											},
 											() => {
+                                                var time = Date.now();
+                                                db.insertNodeCommand(cmd.nodeId, time, cmd, () => {
+                                                    //Send to server
+                                                    homecloud.newCommand([{
+                                                        nodeId: cmd.nodeId,
+                                                        commandId: cmd.id,
+                                                        value: cmd.value,
+                                                        timestamp: time
+                                                    }], (response) => {
+                                                        //Erase
+                                                        db.removeNodeCommand(cmd.nodeId, cmd.id, time, () => {});
+                                                    });
+                                                
+                                                });
 												console.log("[COMMAND] Command " + cmd.value + " sent to node " + cmd.nodeId);
 											}
 										);
@@ -308,26 +328,25 @@ db.initDB(() => {
 								obj.data.forEach((data) => {
 									if (desc.dataType && desc.dataType[data.id] !== undefined) {
 										console.log("	Data with id " + data.id + " received: " + data.value);
-										db.insertNodeData(obj.id, time, data, () => {});
-										db.changeStateFromNodeAndDataId(obj.id, data, () => {});
-                                        if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
-                                            //Sent to server
-                                            homecloud.newData([{
-                                                nodeId: obj.id,
-                                                dataId: data.id,
-                                                value: data.value,
-                                                timestamp: time
-                                            }], (response) => {
-                                                //Erase
-                                                db.removeNodeData(obj.id, data.id, time, () => {});
-                                            });
-                                        }
+										db.insertNodeData(obj.id, time, data, () => {
+    										db.changeStateFromNodeAndDataId(obj.id, data, sendCommandIfRulesAreTrue);
+                                            if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
+                                                //Sent to server
+                                                homecloud.newData([{
+                                                    nodeId: obj.id,
+                                                    dataId: data.id,
+                                                    value: data.value,
+                                                    timestamp: time
+                                                }], (response) => {
+                                                    //Erase
+                                                    db.removeNodeData(obj.id, data.id, time, () => {});
+                                                });
+                                            }
+                                        });
 									}
 									else
 									   console.log("	Data with id " + data.id + " not declared");
 								});
-                                
-								sendCommandIfRulesAreTrue();
 							});
 						}, 'data');
 
@@ -351,25 +370,25 @@ db.initDB(() => {
 								obj.command.forEach((command) => {
 									if (desc.commandType && desc.commandType[command.id] !== undefined) {
 										console.log("	External Command with id " + command.id + " received: " + command.value);
-										db.insertNodeCommand(obj.id, time, command, () => {});
-                                        if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
-                                            //Sent to server
-                                            homecloud.newCommand([{
-                                                nodeId: obj.id,
-                                                commandId: command.id,
-                                                value: command.value,
-                                                timestamp: time
-                                            }], (response) => {
-                                                //Erase
-                                                db.removeNodeCommand(obj.id, command.id, time, () => {});
-                                            });
-                                        }
+										db.insertNodeCommand(obj.id, time, command, () => {
+                                            if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
+                                                //Sent to server
+                                                homecloud.newCommand([{
+                                                    nodeId: obj.id,
+                                                    commandId: command.id,
+                                                    value: command.value,
+                                                    timestamp: time
+                                                }], (response) => {
+                                                    //Erase
+                                                    db.removeNodeCommand(obj.id, command.id, time, () => {});
+                                                });
+                                            }
+                                        });
 									}
 									else
 									console.log("	External Command with id " + command.id + " not declared");
 								});
 							});
-							sendCommandIfRulesAreTrue();
 						}, 'externalcommand');
 					});
 				}

@@ -77,7 +77,7 @@ Rule.prototype.removeRules = function (nodeId, callback) {
     this.rules = this.rules.filter((rule) => {
         return rule.command.nodeId != nodeId;
     });
-    removeNodeRules(nodeId, callback);
+    db.removeNodeRules(nodeId, callback);
 };
 
 Rule.prototype.getCommandsIfClauseIsTrue = function(callback) {
