@@ -16,10 +16,14 @@ function startTimer(node_id, id) {
 	if (id !== undefined)
 		clearTimeout(id);
 	return setTimeout(() => {
-        console.log("Deactivating node with id " + node_id + " due to timeout.");
-        db.deactivateNode(node_id, () => {});
-		db.removeStateFromNodeId(node_id, () => {});
-        homecloud.setNodeState(node_id, false);
+        db.getNode(node_id, (err, desc, activated, accepted) => {
+            if (err)
+                return;
+            console.log("Deactivating node with id " + node_id + " due to timeout.");
+            db.deactivateNode(node_id, () => {});
+    		db.removeStateFromNodeId(node_id, () => {});
+            homecloud.setNodeState(node_id, false);
+        });
 	}, 2 * KEEP_ALIVE_TIME);
 }
 
@@ -113,7 +117,7 @@ db.initDB(() => {
         .onRemoveNode((message) => {
             rule.removeRules(message.nodeId, () => {});
             db.removeNode(message.nodeId, () => {
-                //Removed node
+                clearTimeout(timers[message.nodeId]);
             });
         })
         .start();
@@ -260,8 +264,18 @@ db.initDB(() => {
 						}, 'description');
 
 						rainfall.listen((obj, from) => {
-							console.log("[KEEP ALIVE] from " + obj.id);
-							timers[obj.id] = startTimer(obj.id, timers[obj.id]);
+							db.getNode(obj.id, (err, desc, activated, accepted) => {
+                                if (err) {
+                                    console.log("[KEEP ALIVE] from unexisting node " + obj.id);
+                                    clearTimeout(timers[obj.id]);
+                                }
+                                else {
+                                    console.log("[KEEP ALIVE] from node " + obj.id);
+                                    timers[obj.id] = startTimer(obj.id, timers[obj.id]);
+                                }
+
+                            });
+                            
 						}, 'keepalive');
 
 						var sendCommandIfRulesAreTrue = () => {
@@ -292,7 +306,7 @@ db.initDB(() => {
                                                     //Send to server
                                                     homecloud.newCommand([{
                                                         nodeId: cmd.nodeId,
-                                                        commandId: cmd.id,
+                                                        commandId: cmd.commandId,
                                                         value: cmd.value,
                                                         timestamp: time
                                                     }], (response) => {
