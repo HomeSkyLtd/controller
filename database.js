@@ -384,6 +384,32 @@ function changeStateFromNodeAndDataId(nodeId, data, cb) {
 	});
 }
 
+function retrieveDataFromNodeAndCommandId(nodeId, command, cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+
+        var collection = db.collection('nodeState');
+        collection.findOne({nodeId: Number(nodeId), commandId: Number(command.id)},
+        (err, result) => {
+            cb (err, result);
+        });
+    });
+}
+
+function changeStateFromNodeAndCommandId(nodeId, command, cb) {
+    getDBConnection((err, db) => {
+        if (err) cb(err);
+
+        db.collection('nodeState').updateOne(
+            {nodeId: nodeId, commandId: command.id},
+            {$set: {value: command.value}},
+            {upsert: true},
+            function(err, doc) {
+                cb (err);
+            });
+    });
+}
+
 function removeStateFromNodeId(nodeId, cb) {
 	getDBConnection((err, db) => {
 		if (err) cb(err);
@@ -485,6 +511,8 @@ export_functions = {
     closeDB: closeDB,
 	retrieveDataFromNodeAndDataId: retrieveDataFromNodeAndDataId,
 	changeStateFromNodeAndDataId: changeStateFromNodeAndDataId,
+    retrieveDataFromNodeAndCommandId: retrieveDataFromNodeAndCommandId,
+    changeStateFromNodeAndCommandId: changeStateFromNodeAndCommandId,
 	removeStateFromNodeId: removeStateFromNodeId,
 	retrieveRules: retrieveRules,
 	insertRule: insertRule,
