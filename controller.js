@@ -291,33 +291,48 @@ db.initDB(() => {
                                             console.log("[Warning] Tried to execute rule of not accepted, pending or deactivated node");
                                             return;
                                         }
-										networkInstances[desc.netId].send(
-											desc.from,
-											{
-												packageType: 'command',
-												command: [{
-													id: cmd.commandId,
-													value: cmd.value
-												}]
-											},
-											() => {
-                                                var time = Date.now();
-                                                db.insertNodeCommand(cmd.nodeId, time, cmd, () => {
-                                                    //Send to server
-                                                    homecloud.newCommand([{
-                                                        nodeId: cmd.nodeId,
-                                                        commandId: cmd.commandId,
-                                                        value: cmd.value,
-                                                        timestamp: time
-                                                    }], (response) => {
-                                                        //Erase
-                                                        db.removeNodeCommand(cmd.nodeId, cmd.id, time, () => {});
-                                                    });
-                                                
-                                                });
-												console.log("[COMMAND] Command " + cmd.value + " sent to node " + cmd.nodeId);
-											}
-										);
+                                        db.retrieveDataFromNodeAndCommandId(cmd.nodeId, {
+                                                id: cmd.commandId
+                                            }, (err, result) => {
+                                                if (err || result === null || result.value != cmd.value) {
+                                                    networkInstances[desc.netId].send(
+                                                        desc.from,
+                                                        {
+                                                            packageType: 'command',
+                                                            command: [{
+                                                                id: cmd.commandId,
+                                                                value: cmd.value
+                                                            }]
+                                                        },
+                                                        () => {
+                                                            db.changeStateFromNodeAndCommandId(cmd.nodeId, 
+                                                                {
+                                                                    id: cmd.commandId,
+                                                                    value: cmd.value
+                                                                }, () => {});
+                                                            var time = Date.now();
+                                                            db.insertNodeCommand(cmd.nodeId, time, cmd, () => {
+                                                                //Send to server
+                                                                homecloud.newCommand([{
+                                                                    nodeId: cmd.nodeId,
+                                                                    commandId: cmd.commandId,
+                                                                    value: cmd.value,
+                                                                    timestamp: time
+                                                                }], (response) => {
+                                                                    //Erase
+                                                                    db.removeNodeCommand(cmd.nodeId, cmd.id, time, () => {});
+                                                                }); 
+                                                            
+                                                            });
+                                                            console.log("[COMMAND] Command " + cmd.value + " sent to node " + cmd.nodeId);
+                                                        }
+                                                    );
+                                                }
+                                                else {
+                                                }
+                                            }
+                                        );
+										
 									});
 								});
 							});
