@@ -427,10 +427,14 @@ function updateRules(rules, cb) {
         if (err) cb(err);
         db.collection('rules').deleteMany({}, function (err, response) {
             if (err) cb(err);
-            db.collection('rules').insertMany(rules, function(err, result) {
-                if (err) cb(err);
-                else cb();
-            });
+            if (rules.length > 0) {
+                db.collection('rules').insertMany(rules, function(err, result) {
+                    if (err) cb(err);
+                    else cb();
+                });
+            } else {
+                cb();
+            }
         });
     });
 }
