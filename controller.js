@@ -30,6 +30,19 @@ function startTimer(node_id, id) {
 db.initDB(() => {
     const NETWORK_MAP = [Tcp];
     var rule;
+    var checkInvalidState = (nodeId, commandId, newValue, cb) => {
+        rule.getCommandsIfClauseIsTrue((commands) => {
+            commands.forEach((cmd) => {
+                if (cmd.nodeId === nodeId && cmd.commandId === commandId && 
+                    cmd.value !== newValue) {
+                    cb(true);
+                    return;
+                }
+            });
+            cb(false);
+            return;
+        });
+    };
     homecloud
         .onAction((message) => {
             console.log("ON ACTION");            
@@ -57,6 +70,14 @@ db.initDB(() => {
                         }
                         else {
                             homecloud.actionResult(action, true);
+                            checkInvalidState(action.nodeId, action.commandId, action.value, (invalid) => {
+                                db.changeStateFromNodeAndCommandId(action.nodeId, 
+                                {
+                                    id: action.commandId,
+                                    value: action.value,
+                                    invalidState: invalid
+                                }, () => {});
+                            });
                         }
                     }
                 );
@@ -273,10 +294,10 @@ db.initDB(() => {
                                     console.log("[KEEP ALIVE] from node " + obj.id);
                                     timers[obj.id] = startTimer(obj.id, timers[obj.id]);
                                 }
-
                             });
-                            
 						}, 'keepalive');
+
+                        
 
 						var sendCommandIfRulesAreTrue = () => {
 							rule.getCommandsIfClauseIsTrue((commands) => {
@@ -294,7 +315,8 @@ db.initDB(() => {
                                         db.retrieveDataFromNodeAndCommandId(cmd.nodeId, {
                                                 id: cmd.commandId
                                             }, (err, result) => {
-                                                if (err || result === null || result.value != cmd.value) {
+                                                if (err || result === null || (result.value != cmd.value &&
+                                                        !result.invalidState)) {
                                                     networkInstances[desc.netId].send(
                                                         desc.from,
                                                         {
@@ -308,7 +330,8 @@ db.initDB(() => {
                                                             db.changeStateFromNodeAndCommandId(cmd.nodeId, 
                                                                 {
                                                                     id: cmd.commandId,
-                                                                    value: cmd.value
+                                                                    value: cmd.value,
+                                                                    invalidState: false
                                                                 }, () => {});
                                                             var time = Date.now();
                                                             db.insertNodeCommand(cmd.nodeId, time, cmd, () => {
@@ -401,8 +424,18 @@ db.initDB(() => {
 									if (desc.commandType && desc.commandType[command.id] !== undefined) {
 										console.log("	External Command with id " + command.id + " received: " + command.value);
 										db.insertNodeCommand(obj.id, time, command, () => {
+                                            //Update state
+                                            checkInvalidState(obj.id, command.id, command.value, 
+                                                (invalid) => {
+                                                db.changeStateFromNodeAndCommandId(obj.id, 
+                                                {
+                                                    id: obj.id,
+                                                    value: command.value,
+                                                    invalidState: invalid
+                                                }, () => {});
+                                            });
                                             if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
-                                                //Sent to server
+                                                //Send to server
                                                 homecloud.newCommand([{
                                                     nodeId: obj.id,
                                                     commandId: command.id,
