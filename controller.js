@@ -46,8 +46,7 @@ db.initDB(() => {
     // Listen for action
     homecloud
         .onAction((message) => {
-
-            console.log("ON ACTION");            
+            console.log("[On Action]");
             //Try to make action
             var action = message.action;
             db.getNode(action.nodeId, (err, desc, activated, accepted) => {
@@ -91,6 +90,7 @@ db.initDB(() => {
         })
         //Listen for new rules
         .onRules((message) => {
+            console.log("[On Rules]");
             //Got new rules
             homecloud.getRules((response) => {
                 if (response.status === 200) {
@@ -102,6 +102,7 @@ db.initDB(() => {
         })
         //Accepted node
         .onAcceptNode((message) => {
+            console.log("[On Accept node]");
             //accept or reject node
             var id = message.nodeId;
             db.getNode(id, (err, desc, activated, accepted) => {
