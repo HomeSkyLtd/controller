@@ -498,7 +498,7 @@ db.initDB(() => {
                                             (invalid) => {
                                                 db.changeStateFromNodeAndCommandId(obj.id, 
                                                 {
-                                                    id: obj.id,
+                                                    id: command.id,
                                                     value: command.value,
                                                     invalidState: invalid
                                                 }, () => {
