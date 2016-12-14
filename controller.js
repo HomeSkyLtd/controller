@@ -328,20 +328,22 @@ db.initDB(() => {
                     //Send commands of rules that evaluate to true
                     //Only can be executed one time at the same time
 					var sendCommandIfRulesAreTrue = () => {
-                        /*if (evaluatingRules) {
+                        if (evaluatingRules) {
                             waitingForEvaluation = true;
                             return;
                         }
-                        evaluatingRules = true;*/
+                        evaluatingRules = true;
                         var nCommands = 1;
 
                         var finalizeCheck = () => {
                             nCommands--;
-                            /*if (nCommands === 0 && waitingForEvaluation) {
-                                waitingForEvaluation = false;
+                            if (nCommands === 0) {
                                 evaluatingRules = false;
-                                setTimeout(sendCommandIfRulesAreTrue, 1);
-                            }*/
+                                if (waitingForEvaluation) {
+                                    waitingForEvaluation = false;
+                                    setTimeout(sendCommandIfRulesAreTrue, 1);
+                                }
+                            }
                         };
 
 						rule.getCommandsIfClauseIsTrue((commands) => {
