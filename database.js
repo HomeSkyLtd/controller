@@ -29,12 +29,6 @@ const INDEXES_COLLECTIONS = {
             keys: { id: 1 },
             options: { unique: true }
         }
-    ],
-    nodeState: [
-        {
-            keys: { nodeId: 1, dataId: 1},
-            options: { unique: true }
-        }
     ]
 };
 
@@ -402,7 +396,7 @@ function changeStateFromNodeAndCommandId(nodeId, command, cb) {
 
         db.collection('nodeState').updateOne(
             {nodeId: nodeId, commandId: command.id},
-            {$set: {value: command.value}},
+            {$set: {value: command.value, invalidState: command.invalidState}},
             {upsert: true},
             function(err, doc) {
                 cb (err);

@@ -37,10 +37,10 @@
     "should": "^8.3.0"
   },
   "dependencies": {
-    "homecloud-controller": "^1.0.0",
+    "homecloud-controller": "*",
     "mongodb": ">=2.1.18",
-    "rainfall": ">=0.1.0",
-    "rainfall-tcp": ">=0.1.0",
-    "rainfall-xbee-s1": ">=0.1.0"
+    "rainfall": "*",
+    "rainfall-tcp": "*",
+    "rainfall-xbee-s1": "*"
   }
 }

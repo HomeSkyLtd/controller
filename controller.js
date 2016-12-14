@@ -30,16 +30,22 @@ function startTimer(node_id, id) {
 db.initDB(() => {
     const NETWORK_MAP = [Tcp];
     var rule;
+    var checkingInvalidState = 0;
     var checkInvalidState = (nodeId, commandId, newValue, cb) => {
+        checkingInvalidState++;
         rule.getCommandsIfClauseIsTrue((commands) => {
-            commands.forEach((cmd) => {
+            for (var i = 0; i < commands.length; i++) {
+                var cmd = commands[i];
                 if (cmd.nodeId === nodeId && cmd.commandId === commandId && 
                     cmd.value !== newValue) {
+                    console.log("[Invalid State] Invalid value " + newValue + " of " + cmd.nodeId);
                     cb(true);
+                    checkingInvalidState--;
                     return;
                 }
-            });
+            }
             cb(false);
+            checkingInvalidState--;
             return;
         });
     };
@@ -76,6 +82,7 @@ db.initDB(() => {
                             homecloud.actionResult(action, true);
                             //Check if command invalidates rule
                             checkInvalidState(action.nodeId, action.commandId, action.value, (invalid) => {
+                                console.log("INSERTING");
                                 db.changeStateFromNodeAndCommandId(action.nodeId, 
                                 {
                                     id: action.commandId,
@@ -317,7 +324,7 @@ db.initDB(() => {
                                 clearTimeout(timers[obj.id]);   
                             }
                             else {
-                                console.log("[KEEP ALIVE] from node " + obj.id);
+                                //console.log("[KEEP ALIVE] from node " + obj.id);
                                 timers[obj.id] = startTimer(obj.id, timers[obj.id]);
                             }
                         });
@@ -332,12 +339,13 @@ db.initDB(() => {
                             waitingForEvaluation = true;
                             return;
                         }
+                        if (checkingInvalidState > 0) return;
                         evaluatingRules = true;
                         var nCommands = 1;
 
                         var finalizeCheck = () => {
                             nCommands--;
-                            if (nCommands === 0) {
+                            if (nCommands <= 0) {
                                 evaluatingRules = false;
                                 if (waitingForEvaluation) {
                                     waitingForEvaluation = false;
@@ -431,7 +439,7 @@ db.initDB(() => {
 					//Listens for data
 					rainfall.listen((obj, from) => {
 						var time = Date.now();
-						console.log("[NEW DATA] from " + obj.id  + " (network " + net.id + ") at " + time);
+						//console.log("[NEW DATA] from " + obj.id  + " (network " + net.id + ") at " + time);
 						db.getNode(obj.id, (err, desc, activated, accepted) => {
 							if (err) {
 								console.log("	Received data from unknown node");
@@ -449,7 +457,7 @@ db.initDB(() => {
 							obj.data.forEach((data) => {
                                 //Check if it is valid
 								if (desc.dataType && desc.dataType[data.id] !== undefined) {
-									console.log("	Data with id " + data.id + " received: " + data.value);
+									//console.log("	Data with id " + data.id + " received: " + data.value);
 									//Insert new data
                                     db.insertNodeData(obj.id, time, data, () => {
 										db.changeStateFromNodeAndDataId(obj.id, data, sendCommandIfRulesAreTrue);
@@ -491,19 +499,24 @@ db.initDB(() => {
                                 return;
                             }
                             //For each command
-							obj.command.forEach((command) => {
+                            obj.command.forEach((command) => {
 								if (desc.commandType && desc.commandType[command.id] !== undefined) {
 									console.log("	External Command with id " + command.id + " received: " + command.value);
 									db.insertNodeCommand(obj.id, time, command, () => {
                                         //Update state
                                         checkInvalidState(obj.id, command.id, command.value, 
                                             (invalid) => {
+                                                console.log("   Saving Command with id " + command.id + " received: " + command.value);
                                                 db.changeStateFromNodeAndCommandId(obj.id, 
                                                 {
                                                     id: command.id,
                                                     value: command.value,
                                                     invalidState: invalid
-                                                }, () => {
+                                                }, (err) => {
+                                                    if  (err) {
+                                                        console.log("[Error] Error inserting command");
+                                                        console.log(err);
+                                                    }
                                                     if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
                                                         //Send to server
                                                         homecloud.newCommand([{
@@ -521,7 +534,7 @@ db.initDB(() => {
                                     });
 								}
 								else
-								console.log("	External Command with id " + command.id + " not declared");
+								    console.log("	External Command with id " + command.id + " not declared");
 							});
 						});
 					}, 'externalcommand');
