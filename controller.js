@@ -263,7 +263,7 @@ db.initDB(() => {
 								});
 								console.log("Sending welcomeback and lifetime to " + JSON.stringify(from));
 								db.activateNode(obj.id, () => {});
-                                homecloud.setNodeState(id, true);
+                                homecloud.setNodeState(obj.id, true);
 								timers[obj.id] = startTimer(obj.id, timers[obj.id]);
 							}
 							else {

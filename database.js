@@ -90,7 +90,7 @@ function nodeExists(id, cb) {
 
             if(err) cb(err, false);
             else if (docs.length === 0) cb(null, false);
-            else if(docs.description === undefined) cb(null, false);
+            else if(docs[0].description === undefined) cb(null, false);
             else cb(null, true);
         });
     });
