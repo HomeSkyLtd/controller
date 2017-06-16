@@ -2,9 +2,10 @@
 const db = require('./database').db;
 const Rainfall = require('rainfall');
 const Tcp = require('rainfall-tcp');
+// const Tcp = require('../sn-node/drivers/tcp/driver.js');
 const Rule = require('./rule/rule.js');
 var Homecloud = require('homecloud-controller').Homecloud;
-const KEEP_ALIVE_TIME = 10 * 1000;//10s
+const KEEP_ALIVE_TIME = 24 * 3600 * 1000;
 
 var timers = {};
 var networkInstances = {};
@@ -299,7 +300,7 @@ db.initDB(() => {
 						    desc.dataType = info(obj.dataType);
                             serverDesc.dataType = obj.dataType;
                         }
-                        console.log(desc);
+
 						db.setNodeDescription(obj.id, desc, from, net.id, (err) => {
 							if (err) 
                                 console.log(err);
@@ -326,6 +327,10 @@ db.initDB(() => {
                             else {
                                 //console.log("[KEEP ALIVE] from node " + obj.id);
                                 timers[obj.id] = startTimer(obj.id, timers[obj.id]);
+                                if(!activated) {
+                                    console.log("[KEEP ALIVE] reactivating disabled node " + obj.id);
+                                    db.activateNode(obj.id, () => {});
+                                }
                             }
                         });
 					}, 'keepalive');
