@@ -1,31 +1,31 @@
 /*jshint esversion: 6 */
-const db = require('./database').db;
-const Rainfall = require('rainfall');
-const Tcp = require('rainfall-tcp');
-// const Tcp = require('../sn-node/drivers/tcp/driver.js');
-const Rule = require('./rule/rule.js');
-var Homecloud = require('homecloud-controller').Homecloud;
+const db = require("./database").db;
+const Rainfall = require("rainfall");
+const Tcp = require("rainfall-tcp");
+// const Tcp = require("../sn-node/drivers/tcp/driver.js");
+const Rule = require("./rule/rule.js");
+var Homecloud = require("homecloud-controller").Homecloud;
 const KEEP_ALIVE_TIME = 24 * 3600 * 1000;
 
 var timers = {};
 var networkInstances = {};
 
-const homeCloudOptions = require('./controller_options.json');
+const homeCloudOptions = require("./controller_options.json");
 var homecloud = new Homecloud(homeCloudOptions);
 
 function startTimer(node_id, id) {
-	if (id !== undefined)
-		clearTimeout(id);
-	return setTimeout(() => {
+    if (id !== undefined)
+        clearTimeout(id);
+    return setTimeout(() => {
         db.getNode(node_id, (err, desc, activated, accepted) => {
             if (err)
                 return;
             console.log("Deactivating node with id " + node_id + " due to timeout.");
             db.deactivateNode(node_id, () => {});
-    		db.removeStateFromNodeId(node_id, () => {});
+            db.removeStateFromNodeId(node_id, () => {});
             homecloud.setNodeState(node_id, false);
         });
-	}, 2 * KEEP_ALIVE_TIME);
+    }, 2 * KEEP_ALIVE_TIME);
 }
 
 db.initDB(() => {
@@ -66,7 +66,7 @@ db.initDB(() => {
                 networkInstances[desc.netId].send(
                     desc.from,
                     {
-                        packageType: 'command',
+                        packageType: "command",
                         command: [{
                             id: action.commandId,
                             value: action.value
@@ -84,12 +84,15 @@ db.initDB(() => {
                             //Check if command invalidates rule
                             checkInvalidState(action.nodeId, action.commandId, action.value, (invalid) => {
                                 console.log("INSERTING");
-                                db.changeStateFromNodeAndCommandId(action.nodeId, 
-                                {
-                                    id: action.commandId,
-                                    value: action.value,
-                                    invalidState: invalid
-                                }, () => {});
+                                db.changeStateFromNodeAndCommandId(
+                                    action.nodeId, 
+                                    {
+                                        id: action.commandId,
+                                        value: action.value,
+                                        invalidState: invalid
+                                    }, 
+                                    () => {}
+                                );
                             });
                         }
                     }
@@ -126,7 +129,7 @@ db.initDB(() => {
                     if (message.accept === 1) {
                         //Only send data and external commands if is accepted
                         db.getAllNodeData(id, (err, allData) => {
-                             allData.forEach((data) => {
+                            allData.forEach((data) => {
                                 homecloud.newData([{
                                     nodeId: data.id,
                                     dataId: data.data.id,
@@ -140,7 +143,7 @@ db.initDB(() => {
                         });
 
                         db.getAllNodeCommands(id, (err, allCommands) => {
-                             allCommands.forEach((command) => {
+                            allCommands.forEach((command) => {
                                 homecloud.newCommand([{
                                     nodeId: command.id,
                                     commandId: command.command.id,
@@ -208,114 +211,114 @@ db.initDB(() => {
         });
     });
     
-	rule = new Rule.Rule(() => {
+    rule = new Rule.Rule(() => {
         //For each network
-		db.getNetworks((err, nets) => {
-			nets.forEach((net, key) => {
-				if (!NETWORK_MAP[net.type]) {
-					console.log("Unexisting network interface");
-					return;
-				}
+        db.getNetworks((err, nets) => {
+            nets.forEach((net, key) => {
+                if (!NETWORK_MAP[net.type]) {
+                    console.log("Unexisting network interface");
+                    return;
+                }
                 //Create driver
-				NETWORK_MAP[net.type].createDriver(net.params, (err, driver) => {
-					if (err) {
-						console.log("Failed to start network interface:");
-						console.log(err);
-						return;
-					}
-					var rainfall = new Rainfall.Rainfall(driver);
-					networkInstances[net.id] = rainfall;
+                NETWORK_MAP[net.type].createDriver(net.params, (err, driver) => {
+                    if (err) {
+                        console.log("Failed to start network interface:");
+                        console.log(err);
+                        return;
+                    }
+                    var rainfall = new Rainfall.Rainfall(driver);
+                    networkInstances[net.id] = rainfall;
                     console.log("Listening using params:");
                     console.log(net.params);
 
                     //Initialize node
-					function nodeInit(from) {
-						db.newNode((err, id) => {
+                    function nodeInit(from) {
+                        db.newNode((err, id) => {
                             //Send to server
-							rainfall.send(from, {
-								packageType: 'iamcontroller | describeyourself | lifetime',
-								'yourId': id,
-								'lifetime': KEEP_ALIVE_TIME,
-							}, (err) => {
-								if (err) console.log(err);
-								else {
+                            rainfall.send(from, {
+                                packageType: "iamcontroller | describeyourself | lifetime",
+                                "yourId": id,
+                                "lifetime": KEEP_ALIVE_TIME,
+                            }, (err) => {
+                                if (err) console.log(err);
+                                else {
                                     console.log("iamcontroller, describeyourself, lifetime Sent");
                                 }
                             });
-						});
-					}
+                        });
+                    }
 
-					//Listens for new connections
-					rainfall.listen((obj, from) => {
-						console.log("[NEW CONNECTION] (network " + net.id + ")");
-						nodeInit(from);
-					}, 'whoiscontroller');
-
-					//Listens for reconnections
-					rainfall.listen((obj, from) => {
-						console.log("[RECONNECTION] from " + obj.id + " (network " + net.id + ")");
-						db.nodeExists(obj.id, (err, exists) => {
-							if (exists) {
-								rainfall.send(from, {
-									packageType: 'welcomeback | lifetime',
-									'lifetime': KEEP_ALIVE_TIME,
-								}, (err) => {
-									if(err) console.log(err);
-								});
-								console.log("Sending welcomeback and lifetime to " + JSON.stringify(from));
-								db.activateNode(obj.id, () => {});
-                                homecloud.setNodeState(obj.id, true);
-								timers[obj.id] = startTimer(obj.id, timers[obj.id]);
-							}
-							else {
-                                //Initialize node
-							    nodeInit(from);
-                            }
-						});
-					}, 'iamback');
-
-					//Listens for descriptions
+                    //Listens for new connections
                     rainfall.listen((obj, from) => {
-						console.log("[NEW DESCRIPTION] from " + obj.id + " (network " + net.id + ")");
-						var desc = {nodeClass: obj.nodeClass};
+                        console.log("[NEW CONNECTION] (network " + net.id + ")");
+                        nodeInit(from);
+                    }, "whoiscontroller");
+
+                    //Listens for reconnections
+                    rainfall.listen((obj, from) => {
+                        console.log("[RECONNECTION] from " + obj.id + " (network " + net.id + ")");
+                        db.nodeExists(obj.id, (err, exists) => {
+                            if (exists) {
+                                rainfall.send(from, {
+                                    packageType: "welcomeback | lifetime",
+                                    "lifetime": KEEP_ALIVE_TIME,
+                                }, (err) => {
+                                    if(err) console.log(err);
+                                });
+                                console.log("Sending welcomeback and lifetime to " + JSON.stringify(from));
+                                db.activateNode(obj.id, () => {});
+                                homecloud.setNodeState(obj.id, true);
+                                timers[obj.id] = startTimer(obj.id, timers[obj.id]);
+                            }
+                            else {
+                                //Initialize node
+                                nodeInit(from);
+                            }
+                        });
+                    }, "iamback");
+
+                    //Listens for descriptions
+                    rainfall.listen((obj, from) => {
+                        console.log("[NEW DESCRIPTION] from " + obj.id + " (network " + net.id + ")");
+                        var desc = {nodeClass: obj.nodeClass};
                         var serverDesc = {
                             nodeClass: obj.nodeClass,
                             nodeId: obj.id
                         };
 
-						var info = function(obj) {
-							return obj.reduce((prev, cur) => {
-								if (prev[cur.id] !== undefined) 
+                        var info = function(obj) {
+                            return obj.reduce((prev, cur) => {
+                                if (prev[cur.id] !== undefined) 
                                     console.log("dataType with repeated ids detected");
-								prev[cur.id] = cur;
-								return prev;
-							}, {});
-						};
+                                prev[cur.id] = cur;
+                                return prev;
+                            }, {});
+                        };
 
                         if (obj.nodeClass & Rainfall.NODE_CLASSES.actuator) {
                             desc.commandType = info(obj.commandType);
                             serverDesc.commandType = obj.commandType;
                         }
-						if (obj.nodeClass & Rainfall.NODE_CLASSES.sensor) {
-						    desc.dataType = info(obj.dataType);
+                        if (obj.nodeClass & Rainfall.NODE_CLASSES.sensor) {
+                            desc.dataType = info(obj.dataType);
                             serverDesc.dataType = obj.dataType;
                         }
 
-						db.setNodeDescription(obj.id, desc, from, net.id, (err) => {
-							if (err) 
+                        db.setNodeDescription(obj.id, desc, from, net.id, (err) => {
+                            if (err) 
                                 console.log(err);
-						});
+                        });
                         //Send to server
                         homecloud.newNodes([serverDesc], (response) => {
                             db.sentNodeInfo(obj.id, () => {});
                             timers[obj.id] = startTimer(obj.id);
                             homecloud.setNodeState(obj.id, true);
                         });
-					}, 'description');
+                    }, "description");
 
                     //Listen for keep alive
-					rainfall.listen((obj, from) => {
-						db.getNode(obj.id, (err, desc, activated, accepted) => {
+                    rainfall.listen((obj, from) => {
+                        db.getNode(obj.id, (err, desc, activated, accepted) => {
                             if (err) {
                                 console.log("[KEEP ALIVE] from unexisting node " + obj.id);
                                 clearTimeout(timers[obj.id]);
@@ -333,13 +336,13 @@ db.initDB(() => {
                                 }
                             }
                         });
-					}, 'keepalive');
+                    }, "keepalive");
 
                     var waitingForEvaluation = false;
                     var evaluatingRules = false;
                     //Send commands of rules that evaluate to true
                     //Only can be executed one time at the same time
-					var sendCommandIfRulesAreTrue = () => {
+                    var sendCommandIfRulesAreTrue = () => {
                         if (evaluatingRules) {
                             waitingForEvaluation = true;
                             return;
@@ -359,17 +362,17 @@ db.initDB(() => {
                             }
                         };
 
-						rule.getCommandsIfClauseIsTrue((commands) => {
+                        rule.getCommandsIfClauseIsTrue((commands) => {
                             nCommands = commands.length;
-							commands.forEach((cmd) => {
+                            commands.forEach((cmd) => {
                                 //For each command to send
-								db.getNode(cmd.nodeId, (err, desc, activated, accepted) => {
+                                db.getNode(cmd.nodeId, (err, desc, activated, accepted) => {
                                     //If node is invalid or error, do nothing
-									if (err) {
+                                    if (err) {
                                         console.log("[Warning] Tried to execute rule of unexisting node");
                                         finalizeCheck();
-										return;
-									}
+                                        return;
+                                    }
                                     if (accepted !== db.NODE_ACCEPTED.ACCEPTED ||
                                         !activated) {
                                         console.log("[Warning] Tried to execute rule of not accepted, pending or deactivated node");
@@ -377,7 +380,8 @@ db.initDB(() => {
                                         return;
                                     }
                                     //Get current state
-                                    db.retrieveDataFromNodeAndCommandId(cmd.nodeId, {
+                                    db.retrieveDataFromNodeAndCommandId(cmd.nodeId, 
+                                        {
                                             id: cmd.commandId
                                         }, (err, result) => {
 
@@ -387,7 +391,7 @@ db.initDB(() => {
                                                 networkInstances[desc.netId].send(
                                                     desc.from,
                                                     {
-                                                        packageType: 'command',
+                                                        packageType: "command",
                                                         command: [{
                                                             id: cmd.commandId,
                                                             value: cmd.value
@@ -434,38 +438,38 @@ db.initDB(() => {
                                             }
                                         }
                                     );
-									
-								});
-							});
-						});
+                                    
+                                });
+                            });
+                        });
                         finalizeCheck();
-					};
+                    };
 
-					//Listens for data
-					rainfall.listen((obj, from) => {
-						var time = Date.now();
-						//console.log("[NEW DATA] from " + obj.id  + " (network " + net.id + ") at " + time);
-						db.getNode(obj.id, (err, desc, activated, accepted) => {
-							if (err) {
-								console.log("	Received data from unknown node");
-								return;
-							}
+                    //Listens for data
+                    rainfall.listen((obj, from) => {
+                        var time = Date.now();
+                        //console.log("[NEW DATA] from " + obj.id  + " (network " + net.id + ") at " + time);
+                        db.getNode(obj.id, (err, desc, activated, accepted) => {
+                            if (err) {
+                                console.log("   Received data from unknown node");
+                                return;
+                            }
                             if (accepted === db.NODE_ACCEPTED.NOT_ACCEPTED) {
                                 console.log("   Received data from rejected node");
                                 return;
                             }
-							if (!activated) {
-								console.log("   Received data from deactivated node");
-								return;
-							}
+                            if (!activated) {
+                                console.log("   Received data from deactivated node");
+                                return;
+                            }
                             //For each new data
-							obj.data.forEach((data) => {
+                            obj.data.forEach((data) => {
                                 //Check if it is valid
-								if (desc.dataType && desc.dataType[data.id] !== undefined) {
-									//console.log("	Data with id " + data.id + " received: " + data.value);
-									//Insert new data
+                                if (desc.dataType && desc.dataType[data.id] !== undefined) {
+                                    //console.log(" Data with id " + data.id + " received: " + data.value);
+                                    //Insert new data
                                     db.insertNodeData(obj.id, time, data, () => {
-										db.changeStateFromNodeAndDataId(obj.id, data, sendCommandIfRulesAreTrue);
+                                        db.changeStateFromNodeAndDataId(obj.id, data, sendCommandIfRulesAreTrue);
                                         if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
                                             //Sent to server
                                             homecloud.newData([{
@@ -479,22 +483,22 @@ db.initDB(() => {
                                             });
                                         }
                                     });
-								}
-								else
-								   console.log("	Data with id " + data.id + " not declared");
-							});
-						});
-					}, 'data');
+                                }
+                                else
+                                   console.log("    Data with id " + data.id + " not declared");
+                            });
+                        });
+                    }, "data");
 
-					//Listens for external rainfall commands
-					rainfall.listen((obj, from) => {
-						var time = Date.now();
-						console.log("[NEW COMMAND] from " + obj.id  + " (network " + net.id + ") at " + time);
-						db.getNode(obj.id, (err, desc, activated, accepted) => {
-							if (err) {
-								console.log("   Received external command from unknown node");
-								return;
-							}
+                    //Listens for external rainfall commands
+                    rainfall.listen((obj, from) => {
+                        var time = Date.now();
+                        console.log("[NEW COMMAND] from " + obj.id  + " (network " + net.id + ") at " + time);
+                        db.getNode(obj.id, (err, desc, activated, accepted) => {
+                            if (err) {
+                                console.log("   Received external command from unknown node");
+                                return;
+                            }
                             if (accepted === db.NODE_ACCEPTED.NOT_ACCEPTED) {
                                 console.log("   Received external command from rejected node");
                                 return;
@@ -505,46 +509,48 @@ db.initDB(() => {
                             }
                             //For each command
                             obj.command.forEach((command) => {
-								if (desc.commandType && desc.commandType[command.id] !== undefined) {
-									console.log("	External Command with id " + command.id + " received: " + command.value);
-									db.insertNodeCommand(obj.id, time, command, () => {
+                                if (desc.commandType && desc.commandType[command.id] !== undefined) {
+                                    console.log("   External Command with id " + command.id + " received: " + command.value);
+                                    db.insertNodeCommand(obj.id, time, command, () => {
                                         //Update state
                                         checkInvalidState(obj.id, command.id, command.value, 
                                             (invalid) => {
                                                 console.log("   Saving Command with id " + command.id + " received: " + command.value);
-                                                db.changeStateFromNodeAndCommandId(obj.id, 
-                                                {
-                                                    id: command.id,
-                                                    value: command.value,
-                                                    invalidState: invalid
-                                                }, (err) => {
-                                                    if  (err) {
-                                                        console.log("[Error] Error inserting command");
-                                                        console.log(err);
-                                                    }
-                                                    if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
-                                                        //Send to server
-                                                        homecloud.newCommand([{
-                                                            nodeId: obj.id,
-                                                            commandId: command.id,
-                                                            value: command.value,
-                                                            timestamp: time
-                                                        }], (response) => {
-                                                            //Erase
-                                                            db.removeNodeCommand(obj.id, command.id, time, () => {});
-                                                        });
-                                                    }
-                                                });
-                                        });
+                                                db.changeStateFromNodeAndCommandId(
+                                                    obj.id, 
+                                                    {
+                                                        id: command.id,
+                                                        value: command.value,
+                                                        invalidState: invalid
+                                                    }, 
+                                                    (err) => {
+                                                        if  (err) {
+                                                            console.log("[Error] Error inserting command");
+                                                            console.log(err);
+                                                        }
+                                                        if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
+                                                            //Send to server
+                                                            homecloud.newCommand([{
+                                                                nodeId: obj.id,
+                                                                commandId: command.id,
+                                                                value: command.value,
+                                                                timestamp: time
+                                                            }], (response) => {
+                                                                //Erase
+                                                                db.removeNodeCommand(obj.id, command.id, time, () => {});
+                                                            });
+                                                        }
+                                                    });
+                                            });
                                     });
-								}
-								else
-								    console.log("	External Command with id " + command.id + " not declared");
-							});
-						});
-					}, 'externalcommand');
-				});
-			});
-		});
-	});
+                                }
+                                else
+                                    console.log("   External Command with id " + command.id + " not declared");
+                            });
+                        });
+                    }, "externalcommand");
+                });
+            });
+        });
+    });
 });
