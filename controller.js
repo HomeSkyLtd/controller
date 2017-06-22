@@ -2,6 +2,7 @@
 const db = require("./database").db;
 const Rainfall = require("rainfall");
 const Tcp = require("rainfall-tcp");
+const Logger = require("./utils/logger.js").Logger;
 // const Tcp = require("../sn-node/drivers/tcp/driver.js");
 const Rule = require("./rule/rule.js");
 var Homecloud = require("homecloud-controller").Homecloud;
@@ -20,7 +21,7 @@ function startTimer(node_id, id) {
         db.getNode(node_id, (err, desc, activated, accepted) => {
             if (err)
                 return;
-            console.log("Deactivating node with id " + node_id + " due to timeout.");
+            Logger.debug("Deactivating node with id " + node_id + " due to timeout.");
             db.deactivateNode(node_id, () => {});
             db.removeStateFromNodeId(node_id, () => {});
             homecloud.setNodeState(node_id, false);
@@ -39,7 +40,7 @@ db.initDB(() => {
                 var cmd = commands[i];
                 if (cmd.nodeId === nodeId && cmd.commandId === commandId && 
                     cmd.value !== newValue) {
-                    console.log("[Invalid State] Invalid value " + newValue + " of " + cmd.nodeId);
+                    Logger.debug("Invalid value " + newValue + " of " + cmd.nodeId);
                     cb(true);
                     checkingInvalidState--;
                     return;
@@ -53,12 +54,16 @@ db.initDB(() => {
     // Listen for action
     homecloud
         .onAction((message) => {
-            console.log("[On Action]");
+            Logger.verbose("[On Action] Received action " + message.action);
             //Try to make action
             var action = message.action;
             db.getNode(action.nodeId, (err, desc, activated, accepted) => {
                 // Invalid node
                 if (err || !activated || accepted != db.NODE_ACCEPTED.ACCEPTED) {
+                    if(err)
+                        Logger.error("Error retrieving node on database");
+                    else
+                        Logger.debug("Invoking action on invalid node");
                     homecloud.actionResult(action, false);
                     return;
                 }
@@ -75,6 +80,7 @@ db.initDB(() => {
                     (err) => {
                         //Error
                         if (err) {
+                            Logger.debug("Error sending action to node")
                             homecloud.actionResult(action, false);
                             return; 
                         }
@@ -83,7 +89,6 @@ db.initDB(() => {
                             homecloud.actionResult(action, true);
                             //Check if command invalidates rule
                             checkInvalidState(action.nodeId, action.commandId, action.value, (invalid) => {
-                                console.log("INSERTING");
                                 db.changeStateFromNodeAndCommandId(
                                     action.nodeId, 
                                     {
@@ -101,10 +106,11 @@ db.initDB(() => {
         })
         //Listen for new rules
         .onRules((message) => {
-            console.log("[On Rules]");
+            Logger.verbose("Received notification of new rules");
             //Got new rules
             homecloud.getRules((response) => {
                 if (response.status === 200) {
+                    Logger.verbose("Fetched new rules: " + JSON.stringify(response.rules));
                     //Save new rules
                     rule.updateRules(response.rules, () => {
                     });
@@ -113,16 +119,16 @@ db.initDB(() => {
         })
         //Accepted node
         .onAcceptNode((message) => {
-            console.log("[On Accept node]");
+            Logger.verbose("Received notification of node acceptance");
             //accept or reject node
             var id = message.nodeId;
             db.getNode(id, (err, desc, activated, accepted) => {
-                if (err) console.log("[NOTIFICATION] Tried to accept non existent node");
-                else if (accepted === db.NODE_ACCEPTED.ACCEPTED) console.log("[NOTIFICATION] Tried to accept accepted node");
-                else if (accepted === db.NODE_ACCEPTED.NOT_ACCEPTED) console.log("[NOTIFICATION] Tried to accept rejected node");
-                else if (accepted === db.NODE_ACCEPTED.NOT_SENT) console.log("[NOTIFICATION] Tried to accept non sent node");
+                if (err) Logger.debug("Tried to accept non existent node " + id);
+                else if (accepted === db.NODE_ACCEPTED.ACCEPTED) Logger.debug("Tried to accept already accepted node");
+                else if (accepted === db.NODE_ACCEPTED.NOT_ACCEPTED) Logger.debug("Tried to accept rejected node");
+                else if (accepted === db.NODE_ACCEPTED.NOT_SENT) Logger.debug("Tried to accept non sent node");
                 else {
-                    console.log("[NOTIFICATION] Accepting node");
+                    Logger.verbose("Accepting node " + id);
                     db.activateNode(id, () => {});
                     db.acceptNode(id, message.accept === 1, () => {});
 
@@ -216,20 +222,18 @@ db.initDB(() => {
         db.getNetworks((err, nets) => {
             nets.forEach((net, key) => {
                 if (!NETWORK_MAP[net.type]) {
-                    console.log("Unexisting network interface");
+                    Logger.debug("Unexisting network interface");
                     return;
                 }
                 //Create driver
                 NETWORK_MAP[net.type].createDriver(net.params, (err, driver) => {
                     if (err) {
-                        console.log("Failed to start network interface:");
-                        console.log(err);
+                        Logger.error("Failed to start network interface: " + err.stack);
                         return;
                     }
                     var rainfall = new Rainfall.Rainfall(driver);
                     networkInstances[net.id] = rainfall;
-                    console.log("Listening using params:");
-                    console.log(net.params);
+                    Logger.verbose("Listening using params: " + JSON.stringify(net.params));
 
                     //Initialize node
                     function nodeInit(from) {
@@ -240,9 +244,9 @@ db.initDB(() => {
                                 "yourId": id,
                                 "lifetime": KEEP_ALIVE_TIME,
                             }, (err) => {
-                                if (err) console.log(err);
+                                if (err) Logger.debug(err.stack);
                                 else {
-                                    console.log("iamcontroller, describeyourself, lifetime Sent");
+                                    Logger.verbose("iamcontroller, describeyourself, lifetime Sent");
                                 }
                             });
                         });
@@ -250,22 +254,22 @@ db.initDB(() => {
 
                     //Listens for new connections
                     rainfall.listen((obj, from) => {
-                        console.log("[NEW CONNECTION] (network " + net.id + ")");
+                        Logger.verbose("New connection received (network " + net.id + ")");
                         nodeInit(from);
                     }, "whoiscontroller");
 
                     //Listens for reconnections
                     rainfall.listen((obj, from) => {
-                        console.log("[RECONNECTION] from " + obj.id + " (network " + net.id + ")");
+                        Logger.verbose("Reconnection from " + obj.id + " (network " + net.id + ")");
                         db.nodeExists(obj.id, (err, exists) => {
                             if (exists) {
                                 rainfall.send(from, {
                                     packageType: "welcomeback | lifetime",
                                     "lifetime": KEEP_ALIVE_TIME,
                                 }, (err) => {
-                                    if(err) console.log(err);
+                                    if(err) Logger.debug(err.stack);
                                 });
-                                console.log("Sending welcomeback and lifetime to " + JSON.stringify(from));
+                                Logger.verbose("Sending welcomeback and lifetime to " + JSON.stringify(from));
                                 db.activateNode(obj.id, () => {});
                                 homecloud.setNodeState(obj.id, true);
                                 timers[obj.id] = startTimer(obj.id, timers[obj.id]);
@@ -279,7 +283,7 @@ db.initDB(() => {
 
                     //Listens for descriptions
                     rainfall.listen((obj, from) => {
-                        console.log("[NEW DESCRIPTION] from " + obj.id + " (network " + net.id + ")");
+                        Logger.verbose("New description from " + obj.id + " (network " + net.id + ")");
                         var desc = {nodeClass: obj.nodeClass};
                         var serverDesc = {
                             nodeClass: obj.nodeClass,
@@ -289,7 +293,7 @@ db.initDB(() => {
                         var info = function(obj) {
                             return obj.reduce((prev, cur) => {
                                 if (prev[cur.id] !== undefined) 
-                                    console.log("dataType with repeated ids detected");
+                                    Logger.verbose("dataType with repeated ids detected");
                                 prev[cur.id] = cur;
                                 return prev;
                             }, {});
@@ -306,7 +310,7 @@ db.initDB(() => {
 
                         db.setNodeDescription(obj.id, desc, from, net.id, (err) => {
                             if (err) 
-                                console.log(err);
+                                Logger.error(err.stack);
                         });
                         //Send to server
                         homecloud.newNodes([serverDesc], (response) => {
@@ -320,18 +324,18 @@ db.initDB(() => {
                     rainfall.listen((obj, from) => {
                         db.getNode(obj.id, (err, desc, activated, accepted) => {
                             if (err) {
-                                console.log("[KEEP ALIVE] from unexisting node " + obj.id);
+                                Logger.debug("Received keep alive from unexisting node " + obj.id);
                                 clearTimeout(timers[obj.id]);
                             }
                             else if (accepted === db.NODE_ACCEPTED.NOT_ACCEPTED) {
-                                console.log("[KEEP ALIVE] from not accepted node " + obj.id);
+                                Logger.debug("Received keep alive from not accepted node " + obj.id);
                                 clearTimeout(timers[obj.id]);   
                             }
                             else {
                                 //console.log("[KEEP ALIVE] from node " + obj.id);
                                 timers[obj.id] = startTimer(obj.id, timers[obj.id]);
                                 if(!activated) {
-                                    console.log("[KEEP ALIVE] reactivating disabled node " + obj.id);
+                                    Logger.debug("Reactivating disabled node " + obj.id);
                                     db.activateNode(obj.id, () => {});
                                 }
                             }
@@ -369,13 +373,13 @@ db.initDB(() => {
                                 db.getNode(cmd.nodeId, (err, desc, activated, accepted) => {
                                     //If node is invalid or error, do nothing
                                     if (err) {
-                                        console.log("[Warning] Tried to execute rule of unexisting node");
+                                        Logger.debug("Tried to execute rule of unexisting node");
                                         finalizeCheck();
                                         return;
                                     }
                                     if (accepted !== db.NODE_ACCEPTED.ACCEPTED ||
                                         !activated) {
-                                        console.log("[Warning] Tried to execute rule of not accepted, pending or deactivated node");
+                                        Logger.debug("Tried to execute rule of not accepted, pending or deactivated node");
                                         finalizeCheck();
                                         return;
                                     }
@@ -399,11 +403,11 @@ db.initDB(() => {
                                                     },
                                                     (err) => {
                                                         if (err) {
-                                                            console.log("[Error] Error while sending command " + cmd.value + " from rule of node " + cmd.nodeId);
+                                                            Logger.error("Error while sending command " + cmd.value + " from rule of node " + cmd.nodeId);
                                                             finalizeCheck();
                                                             return; 
                                                         }
-                                                        console.log("[COMMAND] Command " + cmd.value + " from rule sent to node " + cmd.nodeId);
+                                                        Logger.verbose("Command " + cmd.value + " from rule sent to node " + cmd.nodeId);
                                                         
                                                         //Update state database
                                                         db.changeStateFromNodeAndCommandId(cmd.nodeId, 
@@ -448,18 +452,18 @@ db.initDB(() => {
                     //Listens for data
                     rainfall.listen((obj, from) => {
                         var time = Date.now();
-                        //console.log("[NEW DATA] from " + obj.id  + " (network " + net.id + ") at " + time);
+                        Logger.verbose("New data from " + obj.id  + " (network " + net.id + ") at " + time);
                         db.getNode(obj.id, (err, desc, activated, accepted) => {
                             if (err) {
-                                console.log("   Received data from unknown node");
+                                Logger.debug("Received data from unknown node");
                                 return;
                             }
                             if (accepted === db.NODE_ACCEPTED.NOT_ACCEPTED) {
-                                console.log("   Received data from rejected node");
+                                Logger.debug("Received data from rejected node");
                                 return;
                             }
                             if (!activated) {
-                                console.log("   Received data from deactivated node");
+                                Logger.debug("Received data from deactivated node");
                                 return;
                             }
                             //For each new data
@@ -485,7 +489,7 @@ db.initDB(() => {
                                     });
                                 }
                                 else
-                                   console.log("    Data with id " + data.id + " not declared");
+                                   Logger.debug("Data with id " + data.id + " not declared");
                             });
                         });
                     }, "data");
@@ -493,29 +497,29 @@ db.initDB(() => {
                     //Listens for external rainfall commands
                     rainfall.listen((obj, from) => {
                         var time = Date.now();
-                        console.log("[NEW COMMAND] from " + obj.id  + " (network " + net.id + ") at " + time);
+                        Logger.verbose("New external command from " + obj.id  + " (network " + net.id + ") at " + time);
                         db.getNode(obj.id, (err, desc, activated, accepted) => {
                             if (err) {
-                                console.log("   Received external command from unknown node");
+                                Logger.debug("Received external command from unknown node");
                                 return;
                             }
                             if (accepted === db.NODE_ACCEPTED.NOT_ACCEPTED) {
-                                console.log("   Received external command from rejected node");
+                                Logger.debug("Received external command from rejected node");
                                 return;
                             }
                             if (!activated) {
-                                console.log("   Received external command from deactivated node");
+                                Logger.debug("Received external command from deactivated node");
                                 return;
                             }
                             //For each command
                             obj.command.forEach((command) => {
                                 if (desc.commandType && desc.commandType[command.id] !== undefined) {
-                                    console.log("   External Command with id " + command.id + " received: " + command.value);
+                                    Logger.verbose("External Command with id " + command.id + " received: " + command.value);
                                     db.insertNodeCommand(obj.id, time, command, () => {
                                         //Update state
                                         checkInvalidState(obj.id, command.id, command.value, 
                                             (invalid) => {
-                                                console.log("   Saving Command with id " + command.id + " received: " + command.value);
+                                                Logger.verbose("Saving Command with id " + command.id + " received: " + command.value);
                                                 db.changeStateFromNodeAndCommandId(
                                                     obj.id, 
                                                     {
@@ -525,8 +529,7 @@ db.initDB(() => {
                                                     }, 
                                                     (err) => {
                                                         if  (err) {
-                                                            console.log("[Error] Error inserting command");
-                                                            console.log(err);
+                                                            console.error("Error inserting command: " + err.stack);
                                                         }
                                                         if (accepted === db.NODE_ACCEPTED.ACCEPTED) {
                                                             //Send to server
@@ -545,7 +548,7 @@ db.initDB(() => {
                                     });
                                 }
                                 else
-                                    console.log("   External Command with id " + command.id + " not declared");
+                                    console.debug("External Command with id " + command.id + " not declared");
                             });
                         });
                     }, "externalcommand");
