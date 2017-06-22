@@ -63,6 +63,6 @@ Logger.prototype._writeData = async function(message, level, logFileOnly = false
 };
 
 module.exports = {
-    Logger: new Logger(levels.VERBOSE),
+    Logger: new Logger(levels.VERBOSE, path.join(__dirname, "..", "events.log")),
     levels: levels
 };

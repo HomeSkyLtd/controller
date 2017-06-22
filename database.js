@@ -127,7 +127,6 @@ function newNode(cb) {
 
         var collection = db.collection('nodes');
         getAndIncrementNodeCounter((err, id) => {
-            console.log(id);
             collection.insertOne({id: id}, function(err, r){
                 cb(err, id);
             });
@@ -334,7 +333,6 @@ function getAndIncrementNodeCounter(cb){
 
         var collection = db.collection('nodeCount');
         collection.findOne({}, (err, doc)=>{
-            console.log(doc);
             if(err) cb(err);
             else if(doc === null){
                 collection.insertOne({count: 1}, (err, r)=>{

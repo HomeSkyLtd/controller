@@ -12,7 +12,7 @@ var timers = {};
 var networkInstances = {};
 
 const homeCloudOptions = require("./controller_options.json");
-var homecloud = new Homecloud(homeCloudOptions);
+var homecloud = new Homecloud(homeCloudOptions, Logger);
 
 function startTimer(node_id, id) {
     if (id !== undefined)
