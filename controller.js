@@ -54,7 +54,7 @@ db.initDB(() => {
     // Listen for action
     homecloud
         .onAction((message) => {
-            Logger.verbose("[On Action] Received action " + message.action);
+            Logger.verbose("Received action " + JSON.stringify(message.action));
             //Try to make action
             var action = message.action;
             db.getNode(action.nodeId, (err, desc, activated, accepted) => {
@@ -452,7 +452,7 @@ db.initDB(() => {
                     //Listens for data
                     rainfall.listen((obj, from) => {
                         var time = Date.now();
-                        Logger.verbose("New data from " + obj.id  + " (network " + net.id + ") at " + time);
+                        Logger.verbose(`New data from ${obj.id} (network ${net.id}): ${JSON.stringify(obj.data)}`);
                         db.getNode(obj.id, (err, desc, activated, accepted) => {
                             if (err) {
                                 Logger.debug("Received data from unknown node");
