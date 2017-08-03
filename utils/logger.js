@@ -26,9 +26,11 @@ uncoloredStrings[levels.INFO] = "INFO ";
 uncoloredStrings[levels.WARN] = "WARN ";
 uncoloredStrings[levels.ERROR] = "ERROR";
 
-const Logger = function(level, fileName) {
+const Logger = function(level, path) {
     this.level = level;
-    this.fileName = fileName;
+    this.path = path;
+    if(this.path && !fs.existsSync(path))
+        fs.mkdirSync(path);
 };
 
 Logger.prototype.verbose = function(message) {
@@ -58,11 +60,15 @@ Logger.prototype.error = function(message) {
 Logger.prototype._writeData = async function(message, level, logFileOnly = false) {
     if(!logFileOnly)
         console.log(`${coloredStrings[level]} [${new Date().toISOString()}] ${message}`);
-    if(this.fileName)
-        await fs.appendFile(this.fileName, `${uncoloredStrings[level]} [${new Date().toISOString()}] ${message}\n`);
+    if(this.path)
+        await fs.appendFile(path.join(this.path, this._getFileName()), `${uncoloredStrings[level]} [${new Date().toISOString()}] ${message}\n`);
+};
+
+Logger.prototype._getFileName = function() {
+    return `${new Date().toISOString().substring(0, 10)}.log`;
 };
 
 module.exports = {
-    Logger: new Logger(levels.VERBOSE, path.join(__dirname, "..", "events.log")),
+    Logger: new Logger(levels.VERBOSE, path.join(__dirname, "..", "logs")),
     levels: levels
 };
